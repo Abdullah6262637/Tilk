@@ -244,6 +244,72 @@ pub fn create_global_env() -> Env {
     }));
     env.set("arkaplanda_çalıştır".to_string(), calistir_builtin.clone());
     env.set("arkaplanda_calistir".to_string(), calistir_builtin);
+
+    // Built-in function "kök" / "karekok"
+    let kok_builtin = Val::Builtin(Rc::new(|args| {
+        if args.len() == 1 {
+            if let &Val::Number(n) = &args[0] {
+                if n >= 0.0 {
+                    return Val::Number(n.sqrt());
+                } else {
+                    return Val::Hata("Negatif sayının karekökü alınamaz".to_string());
+                }
+            }
+        }
+        Val::Hata("Geçersiz argüman: kök(sayı)".to_string())
+    }));
+    env.set("kök".to_string(), kok_builtin.clone());
+    env.set("karekok".to_string(), kok_builtin);
+
+    // Built-in function "üs" / "ust"
+    let us_builtin = Val::Builtin(Rc::new(|args| {
+        if args.len() == 2 {
+            if let (&Val::Number(base), &Val::Number(exponent)) = (&args[0], &args[1]) {
+                return Val::Number(base.powf(exponent));
+            }
+        }
+        Val::Hata("Geçersiz argüman: üs(taban, üs)".to_string())
+    }));
+    env.set("üs".to_string(), us_builtin.clone());
+    env.set("ust".to_string(), us_builtin);
+
+    // Built-in function "mutlak"
+    env.set(
+        "mutlak".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let &Val::Number(n) = &args[0] {
+                    return Val::Number(n.abs());
+                }
+            }
+            Val::Hata("Geçersiz argüman: mutlak(sayı)".to_string())
+        })),
+    );
+
+    // Built-in function "şimdi" / "simdi"
+    let simdi_builtin = Val::Builtin(Rc::new(|_args| {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        Val::Number(now.as_secs_f64())
+    }));
+    env.set("şimdi".to_string(), simdi_builtin.clone());
+    env.set("simdi".to_string(), simdi_builtin);
+
+    // Built-in function "uyku"
+    env.set(
+        "uyku".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let &Val::Number(ms) = &args[0] {
+                    std::thread::sleep(std::time::Duration::from_millis(ms as u64));
+                    return Val::Bos;
+                }
+            }
+            Val::Hata("Geçersiz argüman: uyku(milisaniye)".to_string())
+        })),
+    );
+
     env
 }
 
@@ -716,6 +782,38 @@ mod tests {
         assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
         let (_, env) = res.unwrap();
         assert_eq!(env.get("yakalanan_sonuc"), Some(Val::Number(30.0)));
+    }
+
+    #[test]
+    fn test_math_time() {
+        let src = r#"
+            işlev test_matematik() {
+                karekok_deger = kök(16);
+                us_deger = üs(2, 3);
+                mutlak_deger = mutlak(0 - 42);
+                simdi_zaman = şimdi();
+                uyku(10);
+                hata_deger = 0;
+                temp_hata = kök(0 - 1) hata_ise {
+                    hata_deger = 999;
+                };
+                döndür [karekok_deger, us_deger, mutlak_deger, simdi_zaman, hata_deger];
+            }
+            sonuclar = test_matematik();
+            karekok_res = sonuclar[0];
+            us_res = sonuclar[1];
+            mutlak_res = sonuclar[2];
+            simdi_res = sonuclar[3];
+            hata_res = sonuclar[4];
+        "#;
+        let res = run_src(src);
+        assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+        let (_, env) = res.unwrap();
+        assert_eq!(env.get("karekok_res"), Some(Val::Number(4.0)));
+        assert_eq!(env.get("us_res"), Some(Val::Number(8.0)));
+        assert_eq!(env.get("mutlak_res"), Some(Val::Number(42.0)));
+        assert!(env.get("simdi_res").is_some());
+        assert_eq!(env.get("hata_res"), Some(Val::Number(999.0)));
     }
 }
 

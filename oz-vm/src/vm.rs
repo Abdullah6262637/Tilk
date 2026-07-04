@@ -28,6 +28,14 @@ impl VM {
         globals.insert("dosya_sil".to_string(), Val::Builtin("dosya_sil".to_string()));
         globals.insert("arkaplanda_çalıştır".to_string(), Val::Builtin("arkaplanda_çalıştır".to_string()));
         globals.insert("arkaplanda_calistir".to_string(), Val::Builtin("arkaplanda_çalıştır".to_string()));
+        globals.insert("kök".to_string(), Val::Builtin("kök".to_string()));
+        globals.insert("karekok".to_string(), Val::Builtin("kök".to_string()));
+        globals.insert("üs".to_string(), Val::Builtin("üs".to_string()));
+        globals.insert("ust".to_string(), Val::Builtin("üs".to_string()));
+        globals.insert("mutlak".to_string(), Val::Builtin("mutlak".to_string()));
+        globals.insert("şimdi".to_string(), Val::Builtin("şimdi".to_string()));
+        globals.insert("simdi".to_string(), Val::Builtin("şimdi".to_string()));
+        globals.insert("uyku".to_string(), Val::Builtin("uyku".to_string()));
 
         VM {
             instructions,
@@ -343,6 +351,60 @@ impl VM {
                                 } else {
                                     self.stack.push(Val::Hata("Geçersiz argüman: arkaplanda_çalıştır(işlev, ...)".to_string()));
                                 }
+                            } else if name == "kök" {
+                                if *arg_count != 1 {
+                                    return Err("HATA: kök() tek bir parametre alır".to_string());
+                                }
+                                let arg = self.stack.pop().ok_or("HATA: Yığın boş (kök)")?;
+                                if let Val::Number(n) = arg {
+                                    if n >= 0.0 {
+                                        self.stack.push(Val::Number(n.sqrt()));
+                                    } else {
+                                        self.stack.push(Val::Hata("Negatif sayının karekökü alınamaz".to_string()));
+                                    }
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: kök(sayı)".to_string()));
+                                }
+                            } else if name == "üs" {
+                                if *arg_count != 2 {
+                                    return Err("HATA: üs() iki parametre alır".to_string());
+                                }
+                                let exp_val = self.stack.pop().ok_or("HATA: Yığın boş (üs exp)")?;
+                                let base_val = self.stack.pop().ok_or("HATA: Yığın boş (üs base)")?;
+                                if let (Val::Number(base), Val::Number(exponent)) = (base_val, exp_val) {
+                                    self.stack.push(Val::Number(base.powf(exponent)));
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: üs(taban, üs)".to_string()));
+                                }
+                            } else if name == "mutlak" {
+                                if *arg_count != 1 {
+                                    return Err("HATA: mutlak() tek bir parametre alır".to_string());
+                                }
+                                let arg = self.stack.pop().ok_or("HATA: Yığın boş (mutlak)")?;
+                                if let Val::Number(n) = arg {
+                                    self.stack.push(Val::Number(n.abs()));
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: mutlak(sayı)".to_string()));
+                                }
+                            } else if name == "şimdi" {
+                                if *arg_count != 0 {
+                                    return Err("HATA: şimdi() parametre almaz".to_string());
+                                }
+                                let now = std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default();
+                                self.stack.push(Val::Number(now.as_secs_f64()));
+                            } else if name == "uyku" {
+                                if *arg_count != 1 {
+                                    return Err("HATA: uyku() tek bir parametre alır".to_string());
+                                }
+                                let arg = self.stack.pop().ok_or("HATA: Yığın boş (uyku)")?;
+                                if let Val::Number(ms) = arg {
+                                    std::thread::sleep(std::time::Duration::from_millis(ms as u64));
+                                    self.stack.push(Val::Bos);
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: uyku(milisaniye)".to_string()));
+                                }
                             } else {
                                 return Err(format!("HATA: Bilinmeyen dahili işlev '{}'", name));
                             }
@@ -493,6 +555,60 @@ impl VM {
                                                 }
                                             } else {
                                                 Val::Hata("dosya_sil() tek bir parametre alır".to_string())
+                                            }
+                                        } else if name == "kök" {
+                                            if task.args.len() == 1 {
+                                                if let &Val::Number(n) = &task.args[0] {
+                                                    if n >= 0.0 {
+                                                        Val::Number(n.sqrt())
+                                                    } else {
+                                                        Val::Hata("Negatif sayının karekökü alınamaz".to_string())
+                                                    }
+                                                } else {
+                                                    Val::Hata("Geçersiz argüman: kök(sayı)".to_string())
+                                                }
+                                            } else {
+                                                Val::Hata("kök() tek bir parametre alır".to_string())
+                                            }
+                                        } else if name == "üs" {
+                                            if task.args.len() == 2 {
+                                                if let (&Val::Number(base), &Val::Number(exponent)) = (&task.args[0], &task.args[1]) {
+                                                    Val::Number(base.powf(exponent))
+                                                } else {
+                                                    Val::Hata("Geçersiz argüman: üs(taban, üs)".to_string())
+                                                }
+                                            } else {
+                                                Val::Hata("üs() iki parametre alır".to_string())
+                                            }
+                                        } else if name == "mutlak" {
+                                            if task.args.len() == 1 {
+                                                if let &Val::Number(n) = &task.args[0] {
+                                                    Val::Number(n.abs())
+                                                } else {
+                                                    Val::Hata("Geçersiz argüman: mutlak(sayı)".to_string())
+                                                }
+                                            } else {
+                                                Val::Hata("mutlak() tek bir parametre alır".to_string())
+                                            }
+                                        } else if name == "şimdi" {
+                                            if task.args.is_empty() {
+                                                let now = std::time::SystemTime::now()
+                                                    .duration_since(std::time::UNIX_EPOCH)
+                                                    .unwrap_or_default();
+                                                Val::Number(now.as_secs_f64())
+                                            } else {
+                                                Val::Hata("şimdi() parametre almaz".to_string())
+                                            }
+                                        } else if name == "uyku" {
+                                            if task.args.len() == 1 {
+                                                if let &Val::Number(ms) = &task.args[0] {
+                                                    std::thread::sleep(std::time::Duration::from_millis(ms as u64));
+                                                    Val::Bos
+                                                } else {
+                                                    Val::Hata("Geçersiz argüman: uyku(milisaniye)".to_string())
+                                                }
+                                            } else {
+                                                Val::Hata("uyku() tek bir parametre alır".to_string())
                                             }
                                         } else {
                                             Val::Bos

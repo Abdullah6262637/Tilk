@@ -182,4 +182,36 @@ mod tests {
         let (_, vm) = res.unwrap();
         assert_eq!(vm.get_global("yakalanan_sonuc"), Some(Val::Number(30.0)));
     }
+
+    #[test]
+    fn test_math_time() {
+        let src = r#"
+            işlev test_matematik() {
+                karekok_deger = kök(16);
+                us_deger = üs(2, 3);
+                mutlak_deger = mutlak(0 - 42);
+                simdi_zaman = şimdi();
+                uyku(10);
+                hata_deger = 0;
+                temp_hata = kök(0 - 1) hata_ise {
+                    hata_deger = 999;
+                };
+                döndür [karekok_deger, us_deger, mutlak_deger, simdi_zaman, hata_deger];
+            }
+            sonuclar = test_matematik();
+            karekok_res = sonuclar[0];
+            us_res = sonuclar[1];
+            mutlak_res = sonuclar[2];
+            simdi_res = sonuclar[3];
+            hata_res = sonuclar[4];
+        "#;
+        let res = run_bytecode(src);
+        assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+        let (_, vm) = res.unwrap();
+        assert_eq!(vm.get_global("karekok_res"), Some(Val::Number(4.0)));
+        assert_eq!(vm.get_global("us_res"), Some(Val::Number(8.0)));
+        assert_eq!(vm.get_global("mutlak_res"), Some(Val::Number(42.0)));
+        assert!(vm.get_global("simdi_res").is_some());
+        assert_eq!(vm.get_global("hata_res"), Some(Val::Number(999.0)));
+    }
 }
