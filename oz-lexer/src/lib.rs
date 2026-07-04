@@ -162,4 +162,3 @@ pub fn turkish_lowercase(s: &str) -> String {
     }
     result
 }
-

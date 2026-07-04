@@ -97,15 +97,32 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    async fn completion(&self, params: CompletionParams) -> jsonrpc::Result<Option<CompletionResponse>> {
+    async fn completion(
+        &self,
+        params: CompletionParams,
+    ) -> jsonrpc::Result<Option<CompletionResponse>> {
         let uri = params.text_document_position.text_document.uri;
 
         let mut completions = Vec::new();
 
         // 1. Suggest builtins
         let builtins = vec![
-            "yazdır", "boyut", "ekle", "kök", "karekok", "üs", "ust", "mutlak", "şimdi", "simdi",
-            "uyku", "dosya_oku", "dosya_yaz", "dosya_sil", "hata_fırlat", "hata_firlat"
+            "yazdır",
+            "boyut",
+            "ekle",
+            "kök",
+            "karekok",
+            "üs",
+            "ust",
+            "mutlak",
+            "şimdi",
+            "simdi",
+            "uyku",
+            "dosya_oku",
+            "dosya_yaz",
+            "dosya_sil",
+            "hata_fırlat",
+            "hata_firlat",
         ];
         for b in builtins {
             completions.push(CompletionItem {
@@ -135,7 +152,9 @@ impl LanguageServer for Backend {
                 for (name, ty) in &checker.recorded_types {
                     if !name.starts_with('_') {
                         let kind = match ty {
-                            oz_parser::typechecker::Type::Function { .. } => CompletionItemKind::FUNCTION,
+                            oz_parser::typechecker::Type::Function { .. } => {
+                                CompletionItemKind::FUNCTION
+                            }
                             _ => CompletionItemKind::VARIABLE,
                         };
                         completions.push(CompletionItem {
@@ -179,7 +198,6 @@ impl LanguageServer for Backend {
         if let Ok(ast) = oz_parser::parse_tokens(tokens, content.len()) {
             for stmt in &ast {
                 match &stmt.node {
-
                     oz_parser::ast::Statement::FnDecl { name, .. } => {
                         let range = find_symbol_range(content, name);
                         #[allow(deprecated)]
@@ -219,9 +237,14 @@ impl LanguageServer for Backend {
 
 impl Backend {
     async fn on_change(&self, uri: Url, text: String) {
-        self.documents.lock().unwrap().insert(uri.clone(), text.clone());
+        self.documents
+            .lock()
+            .unwrap()
+            .insert(uri.clone(), text.clone());
         let diagnostics = parse_and_diagnose(&text);
-        self.client.publish_diagnostics(uri, diagnostics, None).await;
+        self.client
+            .publish_diagnostics(uri, diagnostics, None)
+            .await;
     }
 }
 
@@ -273,7 +296,8 @@ fn get_word_at_offset(src: &str, offset: usize) -> Option<&str> {
     let mut start = offset;
     while start > 0 {
         let prev_char = src[..start].chars().next_back()?;
-        if prev_char.is_alphanumeric() || prev_char == '_' || "çğışöüÇĞİŞÖÜ".contains(prev_char) {
+        if prev_char.is_alphanumeric() || prev_char == '_' || "çğışöüÇĞİŞÖÜ".contains(prev_char)
+        {
             start -= prev_char.len_utf8();
         } else {
             break;
@@ -282,7 +306,8 @@ fn get_word_at_offset(src: &str, offset: usize) -> Option<&str> {
     let mut end = offset;
     while end < src.len() {
         let next_char = src[end..].chars().next()?;
-        if next_char.is_alphanumeric() || next_char == '_' || "çğışöüÇĞİŞÖÜ".contains(next_char) {
+        if next_char.is_alphanumeric() || next_char == '_' || "çğışöüÇĞİŞÖÜ".contains(next_char)
+        {
             end += next_char.len_utf8();
         } else {
             break;

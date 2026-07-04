@@ -1,4 +1,8 @@
-use oz_parser::ast::{Expr, Statement, BinaryOp, UnaryOp, Literal, StepDir, Spanned};
+#![allow(clippy::single_char_add_str)]
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::len_zero)]
+use oz_parser::ast::{BinaryOp, Expr, Literal, Spanned, Statement, StepDir, UnaryOp};
+
 use std::fs;
 
 pub struct CCodegen {
@@ -13,7 +17,6 @@ impl CCodegen {
     }
 
     pub fn transpile(mut self, stmts: &[Spanned<Statement>]) -> Result<String, String> {
-
         // C runtime header
         self.code.push_str(r#"#include <stdio.h>
 #include <stdlib.h>
@@ -385,7 +388,6 @@ TilkVal not_val(TilkVal v) {
 }
 "#);
 
-
         // Collect all function declarations
         let fn_decls = collect_function_decls(stmts);
 
@@ -393,9 +395,12 @@ TilkVal not_val(TilkVal v) {
         self.code.push_str("\n// Forward Declarations\n");
         for decl in &fn_decls {
             if let Statement::FnDecl { name, params, .. } = decl {
-                self.code.push_str(&format!("TilkVal {}(", sanitize_identifier(name)));
+                self.code
+                    .push_str(&format!("TilkVal {}(", sanitize_identifier(name)));
                 for i in 0..params.len() {
-                    if i > 0 { self.code.push_str(", "); }
+                    if i > 0 {
+                        self.code.push_str(", ");
+                    }
                     self.code.push_str("TilkVal");
                 }
                 self.code.push_str(");\n");
@@ -407,7 +412,9 @@ TilkVal not_val(TilkVal v) {
             if let Statement::FnDecl { name, params, body } = decl {
                 let mut fn_code = format!("\nTilkVal {}(", sanitize_identifier(name));
                 for (i, p) in params.iter().enumerate() {
-                    if i > 0 { fn_code.push_str(", "); }
+                    if i > 0 {
+                        fn_code.push_str(", ");
+                    }
                     fn_code.push_str(&format!("TilkVal {}", sanitize_identifier(p)));
                 }
                 fn_code.push_str(") {\n");
@@ -439,20 +446,30 @@ TilkVal not_val(TilkVal v) {
     fn compile_stmt(&self, stmt: &Spanned<Statement>) -> Result<String, String> {
         let mut out = String::new();
         match &stmt.node {
-
             Statement::VarDecl(name, expr) => {
                 let expr_str = self.compile_expr(expr)?;
-                out.push_str(&format!("    TilkVal {} = {};\n", sanitize_identifier(name), expr_str));
+                out.push_str(&format!(
+                    "    TilkVal {} = {};\n",
+                    sanitize_identifier(name),
+                    expr_str
+                ));
             }
             Statement::Assignment(name, expr) => {
                 let expr_str = self.compile_expr(expr)?;
-                out.push_str(&format!("    {} = {};\n", sanitize_identifier(name), expr_str));
+                out.push_str(&format!(
+                    "    {} = {};\n",
+                    sanitize_identifier(name),
+                    expr_str
+                ));
             }
             Statement::IndexAssignment(target, idx, val) => {
                 let target_str = self.compile_expr(target)?;
                 let idx_str = self.compile_expr(idx)?;
                 let val_str = self.compile_expr(val)?;
-                out.push_str(&format!("    index_assign({}, {}, {});\n", target_str, idx_str, val_str));
+                out.push_str(&format!(
+                    "    index_assign({}, {}, {});\n",
+                    target_str, idx_str, val_str
+                ));
             }
             Statement::If(cond, then_branch, else_branch) => {
                 let cond_str = self.compile_expr(cond)?;
@@ -478,7 +495,13 @@ TilkVal not_val(TilkVal v) {
                 }
                 out.push_str("    }\n");
             }
-            Statement::For { var, start, end, step_dir, body } => {
+            Statement::For {
+                var,
+                start,
+                end,
+                step_dir,
+                body,
+            } => {
                 let start_str = self.compile_expr(start)?;
                 let end_str = self.compile_expr(end)?;
                 let s_var = sanitize_identifier(var);
@@ -486,14 +509,24 @@ TilkVal not_val(TilkVal v) {
                 let end_var = format!("{}_end", s_var);
                 out.push_str(&format!("    TilkVal {} = {};\n", start_var, start_str));
                 out.push_str(&format!("    TilkVal {} = {};\n", end_var, end_str));
-                
-                out.push_str(&format!("    for (double {} = {}.val.number; ", s_var, start_var));
+
+                out.push_str(&format!(
+                    "    for (double {} = {}.val.number; ",
+                    s_var, start_var
+                ));
                 match step_dir {
-                    StepDir::Artarak => out.push_str(&format!("{} <= {}.val.number; {}++", s_var, end_var, s_var)),
-                    StepDir::Azalarak => out.push_str(&format!("{} >= {}.val.number; {}--", s_var, end_var, s_var)),
+                    StepDir::Artarak => {
+                        out.push_str(&format!("{} <= {}.val.number; {}++", s_var, end_var, s_var))
+                    }
+                    StepDir::Azalarak => {
+                        out.push_str(&format!("{} >= {}.val.number; {}--", s_var, end_var, s_var))
+                    }
                 }
                 out.push_str(") {\n");
-                out.push_str(&format!("        TilkVal {}_val = make_number({});\n", s_var, s_var));
+                out.push_str(&format!(
+                    "        TilkVal {}_val = make_number({});\n",
+                    s_var, s_var
+                ));
                 out.push_str(&format!("        TilkVal {} = {}_val;\n", s_var, s_var));
                 for s in body {
                     out.push_str(&self.compile_stmt(s)?);
@@ -531,7 +564,6 @@ TilkVal not_val(TilkVal v) {
 
     fn compile_expr(&self, expr: &Spanned<Expr>) -> Result<String, String> {
         match &expr.node {
-
             Expr::Literal(lit) => match lit {
                 Literal::Number(n) => Ok(format!("make_number({})", n)),
                 Literal::String(s) => Ok(format!("make_string(\"{}\")", escape_string(s))),
@@ -548,7 +580,6 @@ TilkVal not_val(TilkVal v) {
                 Ok(format!("{}({})", helper, op_str))
             }
             Expr::Binary(lhs, op, rhs) => {
-
                 let lhs_str = self.compile_expr(lhs)?;
                 let rhs_str = self.compile_expr(rhs)?;
                 let helper = match op {
@@ -570,13 +601,14 @@ TilkVal not_val(TilkVal v) {
             }
             Expr::Call(name, args) => {
                 if name == "dahil_et" {
-                    if let Some(Expr::Literal(Literal::String(path))) = args.first().map(|s| &s.node) {
-
+                    if let Some(Expr::Literal(Literal::String(path))) =
+                        args.first().map(|s| &s.node)
+                    {
                         let content = fs::read_to_string(path)
                             .map_err(|e| format!("Modül yüklenemedi ({}): {}", path, e))?;
-                        
-                        use oz_lexer::Token;
+
                         use logos::Logos;
+                        use oz_lexer::Token;
                         let lexer = Token::lexer(&content);
                         let mut tokens = Vec::new();
                         for (token_res, _) in lexer.spanned() {
@@ -584,10 +616,10 @@ TilkVal not_val(TilkVal v) {
                                 tokens.push((token, 0..0));
                             }
                         }
-                        
+
                         let ast = oz_parser::parse_tokens(tokens, content.len())
                             .map_err(|e| format!("Ayrıştırma hatası: {:?}", e))?;
-                        
+
                         let mut inline_code = String::new();
                         for stmt in &ast {
                             inline_code.push_str(&self.compile_stmt(stmt)?);
@@ -605,7 +637,9 @@ TilkVal not_val(TilkVal v) {
 
                 let mut args_str = String::new();
                 for (i, arg) in args.iter().enumerate() {
-                    if i > 0 { args_str.push_str(", "); }
+                    if i > 0 {
+                        args_str.push_str(", ");
+                    }
                     args_str.push_str(&self.compile_expr(arg)?);
                 }
                 Ok(format!("{}({})", sanitize_identifier(name), args_str))
@@ -639,7 +673,8 @@ TilkVal not_val(TilkVal v) {
                 for stmt in body {
                     body_code.push_str(&self.compile_stmt(stmt)?);
                 }
-                Ok(format!(r#"({{
+                Ok(format!(
+                    r#"({{
                     TilkVal base = {};
                     if (base.type == VAL_HATA) {{
                         TilkVal hata_mesajı = make_string(base.val.error);
@@ -647,7 +682,9 @@ TilkVal not_val(TilkVal v) {
                         {}
                     }}
                     base;
-                }})"#, base_str, body_code))
+                }})"#,
+                    base_str, body_code
+                ))
             }
         }
     }
@@ -679,10 +716,12 @@ fn collect_function_decls(stmts: &[Spanned<Statement>]) -> Vec<Statement> {
                 if let Expr::Call(name, args) = &spanned_expr.node {
                     if name == "dahil_et" {
                         if let Some(spanned_arg) = args.first() {
-                            if let Expr::Literal(oz_parser::ast::Literal::String(path)) = &spanned_arg.node {
+                            if let Expr::Literal(oz_parser::ast::Literal::String(path)) =
+                                &spanned_arg.node
+                            {
                                 if let Ok(content) = std::fs::read_to_string(path) {
-                                    use oz_lexer::Token;
                                     use logos::Logos;
+                                    use oz_lexer::Token;
                                     let lexer = Token::lexer(&content);
                                     let mut tokens = Vec::new();
                                     for (token_res, _) in lexer.spanned() {
@@ -690,7 +729,8 @@ fn collect_function_decls(stmts: &[Spanned<Statement>]) -> Vec<Statement> {
                                             tokens.push((token, 0..0));
                                         }
                                     }
-                                    if let Ok(ast) = oz_parser::parse_tokens(tokens, content.len()) {
+                                    if let Ok(ast) = oz_parser::parse_tokens(tokens, content.len())
+                                    {
                                         decls.extend(collect_function_decls(&ast));
                                     }
                                 }
@@ -705,34 +745,33 @@ fn collect_function_decls(stmts: &[Spanned<Statement>]) -> Vec<Statement> {
     decls
 }
 
-
 fn escape_string(s: &str) -> String {
     s.replace("\\", "\\\\")
-     .replace("\"", "\\\"")
-     .replace("\n", "\\n")
-     .replace("\r", "\\r")
-     .replace("\t", "\\t")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
 }
 
 fn sanitize_identifier(s: &str) -> String {
     s.chars()
-     .map(|c| match c {
-         'ç' | 'Ç' => 'c',
-         'ğ' | 'Ğ' => 'g',
-         'ı' | 'İ' => 'i',
-         'ö' | 'Ö' => 'o',
-         'ş' | 'Ş' => 's',
-         'ü' | 'Ü' => 'u',
-         other => other,
-     })
-     .collect()
+        .map(|c| match c {
+            'ç' | 'Ç' => 'c',
+            'ğ' | 'Ğ' => 'g',
+            'ı' | 'İ' => 'i',
+            'ö' | 'Ö' => 'o',
+            'ş' | 'Ş' => 's',
+            'ü' | 'Ü' => 'u',
+            other => other,
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oz_lexer::Token;
     use logos::Logos;
+    use oz_lexer::Token;
 
     #[test]
     fn test_codegen_basic() {

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use oz_parser::ast::{Spanned, Statement};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
-use oz_parser::ast::{Statement, Spanned};
 
 #[derive(Clone)]
 pub enum Val {

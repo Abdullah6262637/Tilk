@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use super::val::{Env, TaskState, Val};
 use std::cell::RefCell;
-use super::val::{Val, Env, TaskState};
+use std::rc::Rc;
 
 pub fn create_global_env() -> Env {
     let env = Env::new();

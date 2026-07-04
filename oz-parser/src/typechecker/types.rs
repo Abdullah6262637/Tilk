@@ -8,10 +8,7 @@ pub enum Type {
     Bos,
     Array(Box<Type>),
     Map(Box<Type>),
-    Function {
-        params: Vec<Type>,
-        ret: Box<Type>,
-    },
+    Function { params: Vec<Type>, ret: Box<Type> },
     Task(Box<Type>),
     Var(usize),
     Hata,
@@ -30,13 +27,14 @@ pub struct TypeEnv {
 }
 
 impl TypeEnv {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         TypeEnv {
             bindings: HashMap::new(),
             parent: None,
         }
     }
-    
+
     pub fn extend(parent: &TypeEnv) -> Self {
         TypeEnv {
             bindings: HashMap::new(),

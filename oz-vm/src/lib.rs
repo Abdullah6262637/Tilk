@@ -1,12 +1,15 @@
-pub mod instruction;
+#![allow(clippy::new_without_default)]
+#![allow(clippy::len_zero)]
 pub mod compiler;
+
+pub mod instruction;
 pub mod vm;
 
 use instruction::Val;
 
 pub fn run_bytecode(src: &str) -> Result<(Option<Val>, vm::VM), String> {
-    use oz_lexer::Token;
     use logos::Logos;
+    use oz_lexer::Token;
 
     let lexer = Token::lexer(src);
     let mut tokens = Vec::new();
@@ -29,4 +32,3 @@ pub fn run_bytecode(src: &str) -> Result<(Option<Val>, vm::VM), String> {
 
 #[cfg(test)]
 mod tests;
-

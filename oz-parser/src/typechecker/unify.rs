@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use super::types::{Type, Scheme, TypeEnv};
 use super::inference::TypeChecker;
+use super::types::{Scheme, Type, TypeEnv};
+use std::collections::{HashMap, HashSet};
 
 impl TypeChecker {
     pub fn resolve(&self, ty: &Type) -> Type {
@@ -58,16 +58,19 @@ impl TypeChecker {
                 self.substitutions.insert(*id2, t1.clone());
                 Ok(())
             }
-            (Type::Array(inner1), Type::Array(inner2)) => {
-                self.unify(inner1, inner2)
-            }
-            (Type::Map(inner1), Type::Map(inner2)) => {
-                self.unify(inner1, inner2)
-            }
-            (Type::Task(inner1), Type::Task(inner2)) => {
-                self.unify(inner1, inner2)
-            }
-            (Type::Function { params: p1, ret: r1 }, Type::Function { params: p2, ret: r2 }) => {
+            (Type::Array(inner1), Type::Array(inner2)) => self.unify(inner1, inner2),
+            (Type::Map(inner1), Type::Map(inner2)) => self.unify(inner1, inner2),
+            (Type::Task(inner1), Type::Task(inner2)) => self.unify(inner1, inner2),
+            (
+                Type::Function {
+                    params: p1,
+                    ret: r1,
+                },
+                Type::Function {
+                    params: p2,
+                    ret: r2,
+                },
+            ) => {
                 if p1.len() != p2.len() {
                     return Err("Tip Hatası: Fonksiyon argüman sayısı uyuşmuyor".to_string());
                 }
@@ -76,7 +79,10 @@ impl TypeChecker {
                 }
                 self.unify(r1, r2)
             }
-            _ => Err(format!("Tip Hatası: {:?} ile {:?} tipleri birleştirilemiyor", t1, t2)),
+            _ => Err(format!(
+                "Tip Hatası: {:?} ile {:?} tipleri birleştirilemiyor",
+                t1, t2
+            )),
         }
     }
 
@@ -116,7 +122,8 @@ impl TypeChecker {
             for scheme in e.bindings.values() {
                 let scheme_free = self.free_vars(&scheme.ty);
                 let quantified: HashSet<usize> = scheme.vars.iter().cloned().collect();
-                let actual_free: HashSet<usize> = scheme_free.difference(&quantified).cloned().collect();
+                let actual_free: HashSet<usize> =
+                    scheme_free.difference(&quantified).cloned().collect();
                 vars.extend(actual_free);
             }
             current = e.parent.as_deref();
@@ -140,7 +147,7 @@ impl TypeChecker {
             let fresh = self.new_var();
             mapping.insert(*var_id, Type::Var(fresh));
         }
-        
+
         fn subst(ty: &Type, mapping: &HashMap<usize, Type>) -> Type {
             match ty {
                 Type::Var(id) => {
@@ -160,7 +167,7 @@ impl TypeChecker {
                 _ => ty.clone(),
             }
         }
-        
+
         subst(&scheme.ty, &mapping)
     }
 }

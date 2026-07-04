@@ -67,7 +67,11 @@ pub enum Statement {
     VarDecl(String, Spanned<Expr>),
     Assignment(String, Spanned<Expr>),
     IndexAssignment(Spanned<Expr>, Spanned<Expr>, Spanned<Expr>),
-    If(Spanned<Expr>, Vec<Spanned<Statement>>, Option<Vec<Spanned<Statement>>>),
+    If(
+        Spanned<Expr>,
+        Vec<Spanned<Statement>>,
+        Option<Vec<Spanned<Statement>>>,
+    ),
     While(Spanned<Expr>, Vec<Spanned<Statement>>),
     For {
         var: String,
@@ -85,4 +89,3 @@ pub enum Statement {
     Expr(Spanned<Expr>),
     Tamamlaninca(Spanned<Expr>, Vec<Spanned<Statement>>),
 }
-

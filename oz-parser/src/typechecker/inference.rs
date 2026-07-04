@@ -1,6 +1,6 @@
+use super::types::{Scheme, Type, TypeEnv};
+use crate::ast::{BinaryOp, Expr, Literal, Spanned, Statement, UnaryOp};
 use std::collections::HashMap;
-use crate::ast::{Expr, Statement, BinaryOp, UnaryOp, Literal, Spanned};
-use super::types::{Type, Scheme, TypeEnv};
 
 pub struct TypeChecker {
     pub next_var: usize,
@@ -9,6 +9,7 @@ pub struct TypeChecker {
 }
 
 impl TypeChecker {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         TypeChecker {
             next_var: 0,
@@ -23,9 +24,13 @@ impl TypeChecker {
         v
     }
 
-    pub fn infer_expr(&mut self, expr: &Spanned<Expr>, env: &mut TypeEnv, current_ret_ty: &Option<Type>) -> Result<Type, String> {
+    pub fn infer_expr(
+        &mut self,
+        expr: &Spanned<Expr>,
+        env: &mut TypeEnv,
+        current_ret_ty: &Option<Type>,
+    ) -> Result<Type, String> {
         match &expr.node {
-
             Expr::Literal(lit) => match lit {
                 Literal::Number(_) => Ok(Type::Number),
                 Literal::String(_) => Ok(Type::String),
@@ -100,24 +105,25 @@ impl TypeChecker {
                         return Err("Tip Hatası: dahil_et en az bir argüman almalıdır".to_string());
                     }
                     if let Expr::Literal(Literal::String(path)) = &args[0].node {
-
                         let content = std::fs::read_to_string(path)
                             .map_err(|e| format!("Modül yüklenemedi ({}): {}", path, e))?;
-                        
-                        use oz_lexer::Token;
+
                         use logos::Logos;
+                        use oz_lexer::Token;
                         let lexer = Token::lexer(&content);
                         let mut tokens = Vec::new();
                         for (token_res, span) in lexer.spanned() {
                             match token_res {
                                 Ok(token) => tokens.push((token, span)),
-                                Err(_) => return Err(format!("Sözcüksel analiz hatası at {:?}", span)),
+                                Err(_) => {
+                                    return Err(format!("Sözcüksel analiz hatası at {:?}", span))
+                                }
                             }
                         }
-                        
+
                         let ast = crate::parse_tokens(tokens, content.len())
                             .map_err(|e| format!("Ayrıştırma hatası: {:?}", e))?;
-                        
+
                         for stmt in &ast {
                             self.infer_stmt(stmt, env, current_ret_ty)?;
                         }
@@ -129,7 +135,10 @@ impl TypeChecker {
 
                 if name == "arkaplanda_çalıştır" || name == "arkaplanda_calistir" {
                     if args.is_empty() {
-                        return Err("Tip Hatası: arkaplanda_çalıştır en az bir argüman almalıdır".to_string());
+                        return Err(
+                            "Tip Hatası: arkaplanda_çalıştır en az bir argüman almalıdır"
+                                .to_string(),
+                        );
                     }
                     let fn_ty = self.infer_expr(&args[0], env, current_ret_ty)?;
                     let mut param_tys = Vec::new();
@@ -145,16 +154,16 @@ impl TypeChecker {
                     return Ok(Type::Task(Box::new(self.resolve(&Type::Var(ret_var)))));
                 }
 
-                let fn_scheme = env.get(name).ok_or_else(|| {
-                    format!("Tip Hatası: Tanımlanamayan işlev '{}'", name)
-                })?;
+                let fn_scheme = env
+                    .get(name)
+                    .ok_or_else(|| format!("Tip Hatası: Tanımlanamayan işlev '{}'", name))?;
                 let fn_ty = self.instantiate(&fn_scheme);
-                
+
                 let mut arg_tys = Vec::new();
                 for arg in args {
                     arg_tys.push(self.infer_expr(arg, env, current_ret_ty)?);
                 }
-                
+
                 let ret_var = self.new_var();
                 let expected_fn_ty = Type::Function {
                     params: arg_tys,
@@ -203,14 +212,25 @@ impl TypeChecker {
             Expr::HataIse(base_expr, body) => {
                 let base_ty = self.infer_expr(base_expr, env, current_ret_ty)?;
                 let mut child_env = TypeEnv::extend(env);
-                child_env.set("hata_mesajı".to_string(), Scheme { vars: vec![], ty: Type::String });
-                child_env.set("hata_mesaji".to_string(), Scheme { vars: vec![], ty: Type::String });
-                
+                child_env.set(
+                    "hata_mesajı".to_string(),
+                    Scheme {
+                        vars: vec![],
+                        ty: Type::String,
+                    },
+                );
+                child_env.set(
+                    "hata_mesaji".to_string(),
+                    Scheme {
+                        vars: vec![],
+                        ty: Type::String,
+                    },
+                );
+
                 let mut body_ty = Type::Bos;
                 let mut current_env = child_env;
                 for stmt in body {
                     if let Statement::Expr(e) = &stmt.node {
-
                         body_ty = self.infer_expr(e, &mut current_env, current_ret_ty)?;
                     } else {
                         self.infer_stmt(stmt, &mut current_env, current_ret_ty)?;
@@ -225,16 +245,26 @@ impl TypeChecker {
         }
     }
 
-    pub fn infer_stmt(&mut self, stmt: &Spanned<Statement>, env: &mut TypeEnv, current_ret_ty: &Option<Type>) -> Result<(), String> {
+    pub fn infer_stmt(
+        &mut self,
+        stmt: &Spanned<Statement>,
+        env: &mut TypeEnv,
+        current_ret_ty: &Option<Type>,
+    ) -> Result<(), String> {
         match &stmt.node {
-
             Statement::VarDecl(name, value) | Statement::Assignment(name, value) => {
                 let val_ty = self.infer_expr(value, env, current_ret_ty)?;
                 if let Some(scheme) = env.get(name) {
                     let instantiated = self.instantiate(&scheme);
                     self.unify(&instantiated, &val_ty)?;
                 } else {
-                    env.set(name.clone(), Scheme { vars: vec![], ty: val_ty.clone() });
+                    env.set(
+                        name.clone(),
+                        Scheme {
+                            vars: vec![],
+                            ty: val_ty.clone(),
+                        },
+                    );
                 }
                 let resolved = self.resolve(&val_ty);
                 self.recorded_types.insert(name.clone(), resolved);
@@ -257,13 +287,17 @@ impl TypeChecker {
                         self.substitutions.insert(id, array_ty);
                         self.unify(&idx_ty, &Type::Number)?;
                     }
-                    _ => return Err("Tip Hatası: Sadece diziler ve haritalar güncellenebilir".to_string()),
+                    _ => {
+                        return Err(
+                            "Tip Hatası: Sadece diziler ve haritalar güncellenebilir".to_string()
+                        )
+                    }
                 }
             }
             Statement::If(cond, then_block, else_block) => {
                 let cond_ty = self.infer_expr(cond, env, current_ret_ty)?;
                 self.unify(&cond_ty, &Type::Boolean)?;
-                
+
                 let mut then_env = TypeEnv::extend(env);
                 for s in then_block {
                     self.infer_stmt(s, &mut then_env, current_ret_ty)?;
@@ -278,20 +312,32 @@ impl TypeChecker {
             Statement::While(cond, body) => {
                 let cond_ty = self.infer_expr(cond, env, current_ret_ty)?;
                 self.unify(&cond_ty, &Type::Boolean)?;
-                
+
                 let mut body_env = TypeEnv::extend(env);
                 for s in body {
                     self.infer_stmt(s, &mut body_env, current_ret_ty)?;
                 }
             }
-            Statement::For { var, start, end, step_dir: _, body } => {
+            Statement::For {
+                var,
+                start,
+                end,
+                step_dir: _,
+                body,
+            } => {
                 let start_ty = self.infer_expr(start, env, current_ret_ty)?;
                 self.unify(&start_ty, &Type::Number)?;
                 let end_ty = self.infer_expr(end, env, current_ret_ty)?;
                 self.unify(&end_ty, &Type::Number)?;
-                
+
                 let mut body_env = TypeEnv::extend(env);
-                body_env.set(var.clone(), Scheme { vars: vec![], ty: Type::Number });
+                body_env.set(
+                    var.clone(),
+                    Scheme {
+                        vars: vec![],
+                        ty: Type::Number,
+                    },
+                );
                 for s in body {
                     self.infer_stmt(s, &mut body_env, current_ret_ty)?;
                 }
@@ -299,28 +345,41 @@ impl TypeChecker {
             Statement::FnDecl { name, params, body } => {
                 let ret_var = self.new_var();
                 let ret_ty = Type::Var(ret_var);
-                
+
                 let mut param_tys = Vec::new();
                 let mut body_env = TypeEnv::extend(env);
                 for p in params {
                     let p_var = self.new_var();
                     let p_ty = Type::Var(p_var);
                     param_tys.push(p_ty.clone());
-                    body_env.set(p.clone(), Scheme { vars: vec![], ty: p_ty });
+                    body_env.set(
+                        p.clone(),
+                        Scheme {
+                            vars: vec![],
+                            ty: p_ty,
+                        },
+                    );
                 }
-                
+
                 let fn_ty = Type::Function {
                     params: param_tys.clone(),
                     ret: Box::new(ret_ty.clone()),
                 };
-                body_env.set(name.clone(), Scheme { vars: vec![], ty: fn_ty.clone() });
-                
+                body_env.set(
+                    name.clone(),
+                    Scheme {
+                        vars: vec![],
+                        ty: fn_ty.clone(),
+                    },
+                );
+
                 for s in body {
                     self.infer_stmt(s, &mut body_env, &Some(ret_ty.clone()))?;
                 }
-                
+
                 let resolved_fn_ty = self.resolve(&fn_ty);
-                self.recorded_types.insert(name.clone(), resolved_fn_ty.clone());
+                self.recorded_types
+                    .insert(name.clone(), resolved_fn_ty.clone());
                 let generalized = self.generalize(&resolved_fn_ty, env);
                 env.set(name.clone(), generalized);
             }
@@ -347,11 +406,23 @@ impl TypeChecker {
                 let task_res_var = self.new_var();
                 let expected_task_ty = Type::Task(Box::new(Type::Var(task_res_var)));
                 self.unify(&task_ty, &expected_task_ty)?;
-                
+
                 let mut body_env = TypeEnv::extend(env);
                 let resolved_res_ty = self.resolve(&Type::Var(task_res_var));
-                body_env.set("sonuç".to_string(), Scheme { vars: vec![], ty: resolved_res_ty.clone() });
-                body_env.set("sonuc".to_string(), Scheme { vars: vec![], ty: resolved_res_ty });
+                body_env.set(
+                    "sonuç".to_string(),
+                    Scheme {
+                        vars: vec![],
+                        ty: resolved_res_ty.clone(),
+                    },
+                );
+                body_env.set(
+                    "sonuc".to_string(),
+                    Scheme {
+                        vars: vec![],
+                        ty: resolved_res_ty,
+                    },
+                );
                 for s in body {
                     self.infer_stmt(s, &mut body_env, current_ret_ty)?;
                 }
@@ -363,61 +434,133 @@ impl TypeChecker {
 
 pub fn create_default_type_env(checker: &mut TypeChecker) -> TypeEnv {
     let mut env = TypeEnv::new();
-    
+
     let a_var = checker.new_var();
     let yazdir_ty = Type::Function {
         params: vec![Type::Var(a_var)],
         ret: Box::new(Type::Bos),
     };
-    env.set("yazdır".to_string(), Scheme { vars: vec![a_var], ty: yazdir_ty.clone() });
-    env.set("yazdir".to_string(), Scheme { vars: vec![a_var], ty: yazdir_ty });
+    env.set(
+        "yazdır".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: yazdir_ty.clone(),
+        },
+    );
+    env.set(
+        "yazdir".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: yazdir_ty,
+        },
+    );
 
     let a_var = checker.new_var();
     let boyut_ty = Type::Function {
         params: vec![Type::Var(a_var)],
         ret: Box::new(Type::Number),
     };
-    env.set("boyut".to_string(), Scheme { vars: vec![a_var], ty: boyut_ty });
+    env.set(
+        "boyut".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: boyut_ty,
+        },
+    );
 
     let a_var = checker.new_var();
     let ekle_ty = Type::Function {
         params: vec![Type::Array(Box::new(Type::Var(a_var))), Type::Var(a_var)],
         ret: Box::new(Type::Bos),
     };
-    env.set("ekle".to_string(), Scheme { vars: vec![a_var], ty: ekle_ty });
+    env.set(
+        "ekle".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: ekle_ty,
+        },
+    );
 
     let kok_ty = Type::Function {
         params: vec![Type::Number],
         ret: Box::new(Type::Number),
     };
-    env.set("kök".to_string(), Scheme { vars: vec![], ty: kok_ty.clone() });
-    env.set("karekok".to_string(), Scheme { vars: vec![], ty: kok_ty });
+    env.set(
+        "kök".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: kok_ty.clone(),
+        },
+    );
+    env.set(
+        "karekok".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: kok_ty,
+        },
+    );
 
     let us_ty = Type::Function {
         params: vec![Type::Number, Type::Number],
         ret: Box::new(Type::Number),
     };
-    env.set("üs".to_string(), Scheme { vars: vec![], ty: us_ty.clone() });
-    env.set("ust".to_string(), Scheme { vars: vec![], ty: us_ty });
+    env.set(
+        "üs".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: us_ty.clone(),
+        },
+    );
+    env.set(
+        "ust".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: us_ty,
+        },
+    );
 
     let mutlak_ty = Type::Function {
         params: vec![Type::Number],
         ret: Box::new(Type::Number),
     };
-    env.set("mutlak".to_string(), Scheme { vars: vec![], ty: mutlak_ty });
+    env.set(
+        "mutlak".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: mutlak_ty,
+        },
+    );
 
     let simdi_ty = Type::Function {
         params: vec![],
         ret: Box::new(Type::Number),
     };
-    env.set("şimdi".to_string(), Scheme { vars: vec![], ty: simdi_ty.clone() });
-    env.set("simdi".to_string(), Scheme { vars: vec![], ty: simdi_ty });
+    env.set(
+        "şimdi".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: simdi_ty.clone(),
+        },
+    );
+    env.set(
+        "simdi".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: simdi_ty,
+        },
+    );
 
     let uyku_ty = Type::Function {
         params: vec![Type::Number],
         ret: Box::new(Type::Bos),
     };
-    env.set("uyku".to_string(), Scheme { vars: vec![], ty: uyku_ty });
+    env.set(
+        "uyku".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: uyku_ty,
+        },
+    );
 
     let a_var = checker.new_var();
     let b_var = checker.new_var();
@@ -431,46 +574,93 @@ pub fn create_default_type_env(checker: &mut TypeChecker) -> TypeEnv {
         ],
         ret: Box::new(Type::Task(Box::new(Type::Var(b_var)))),
     };
-    env.set("arkaplanda_çalıştır".to_string(), Scheme { vars: vec![a_var, b_var], ty: arkaplanda_ty.clone() });
-    env.set("arkaplanda_calistir".to_string(), Scheme { vars: vec![a_var, b_var], ty: arkaplanda_ty });
+    env.set(
+        "arkaplanda_çalıştır".to_string(),
+        Scheme {
+            vars: vec![a_var, b_var],
+            ty: arkaplanda_ty.clone(),
+        },
+    );
+    env.set(
+        "arkaplanda_calistir".to_string(),
+        Scheme {
+            vars: vec![a_var, b_var],
+            ty: arkaplanda_ty,
+        },
+    );
 
     let dosya_oku_ty = Type::Function {
         params: vec![Type::String],
         ret: Box::new(Type::String),
     };
-    env.set("dosya_oku".to_string(), Scheme { vars: vec![], ty: dosya_oku_ty });
+    env.set(
+        "dosya_oku".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: dosya_oku_ty,
+        },
+    );
 
     let dosya_yaz_ty = Type::Function {
         params: vec![Type::String, Type::String],
         ret: Box::new(Type::Boolean),
     };
-    env.set("dosya_yaz".to_string(), Scheme { vars: vec![], ty: dosya_yaz_ty });
+    env.set(
+        "dosya_yaz".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: dosya_yaz_ty,
+        },
+    );
 
     let dosya_sil_ty = Type::Function {
         params: vec![Type::String],
         ret: Box::new(Type::Boolean),
     };
-    env.set("dosya_sil".to_string(), Scheme { vars: vec![], ty: dosya_sil_ty });
+    env.set(
+        "dosya_sil".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: dosya_sil_ty,
+        },
+    );
 
     let a_var = checker.new_var();
     let hata_firlat_ty = Type::Function {
         params: vec![Type::Var(a_var)],
         ret: Box::new(Type::Var(checker.new_var())),
     };
-    env.set("hata_fırlat".to_string(), Scheme { vars: vec![a_var], ty: hata_firlat_ty.clone() });
-    env.set("hata_firlat".to_string(), Scheme { vars: vec![a_var], ty: hata_firlat_ty });
+    env.set(
+        "hata_fırlat".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: hata_firlat_ty.clone(),
+        },
+    );
+    env.set(
+        "hata_firlat".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: hata_firlat_ty,
+        },
+    );
 
     let dahil_et_ty = Type::Function {
         params: vec![Type::String],
         ret: Box::new(Type::Bos),
     };
-    env.set("dahil_et".to_string(), Scheme { vars: vec![], ty: dahil_et_ty });
+    env.set(
+        "dahil_et".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: dahil_et_ty,
+        },
+    );
 
     env
 }
 
 pub fn check_program(stmts: &[Spanned<Statement>]) -> Result<(), String> {
-
     let mut checker = TypeChecker::new();
     let mut env = create_default_type_env(&mut checker);
     for stmt in stmts {

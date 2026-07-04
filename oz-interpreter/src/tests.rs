@@ -1,8 +1,8 @@
-use super::val::{Val, Env};
 use super::builtins::create_global_env;
 use super::eval::eval_program;
-use oz_lexer::Token;
+use super::val::{Env, Val};
 use logos::Logos;
+use oz_lexer::Token;
 
 fn run_src(src: &str) -> Result<(Option<Val>, Env), String> {
     let lexer = Token::lexer(src);
@@ -139,14 +139,28 @@ fn test_dosya_io() {
     assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
     let (_, env) = res.unwrap();
     assert_eq!(env.get("yazildi_res"), Some(Val::Boolean(true)));
-    assert_eq!(env.get("icerik_res"), Some(Val::String("Tilk Dosya Sistemi".to_string())));
+    assert_eq!(
+        env.get("icerik_res"),
+        Some(Val::String("Tilk Dosya Sistemi".to_string()))
+    );
     assert_eq!(env.get("silindi_res"), Some(Val::Boolean(true)));
-    assert_eq!(env.get("hata_res"), Some(Val::String("yakalandi".to_string())));
-    assert_eq!(env.get("hata_icerik_res"), Some(Val::String("ok".to_string())));
-    
+    assert_eq!(
+        env.get("hata_res"),
+        Some(Val::String("yakalandi".to_string()))
+    );
+    assert_eq!(
+        env.get("hata_icerik_res"),
+        Some(Val::String("ok".to_string()))
+    );
+
     let msg = env.get("hata_mesaji_res").unwrap();
     if let Val::String(s) = msg {
-        assert!(s.contains("okunamadı") || s.contains("okunamadi") || s.contains("bulunamadı") || s.contains("bulunamadi"));
+        assert!(
+            s.contains("okunamadı")
+                || s.contains("okunamadi")
+                || s.contains("bulunamadı")
+                || s.contains("bulunamadi")
+        );
     } else {
         panic!("Hata mesajı string olmalı!");
     }
@@ -238,7 +252,10 @@ fn test_haritalar_ve_mutasyon() {
     assert_eq!(env.get("res_boyut_ilk"), Some(Val::Number(2.0)));
     assert_eq!(env.get("res_ad"), Some(Val::String("Tilk".to_string())));
     assert_eq!(env.get("res_yas_yeni"), Some(Val::Number(4.0)));
-    assert_eq!(env.get("res_sehir_yeni"), Some(Val::String("Bozkır".to_string())));
+    assert_eq!(
+        env.get("res_sehir_yeni"),
+        Some(Val::String("Bozkır".to_string()))
+    );
     assert_eq!(env.get("res_boyut_son"), Some(Val::Number(3.0)));
     assert_eq!(env.get("res_dizi_ilk"), Some(Val::Number(99.0)));
 }
@@ -261,7 +278,7 @@ fn test_dahil_et() {
         sonuc_sabit = sabit_deger;
     "#;
     let res = run_src(src);
-    
+
     let _ = fs::remove_file(module_path);
 
     assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());

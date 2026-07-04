@@ -1,9 +1,8 @@
 use super::*;
-use oz_lexer::Token;
 use logos::Logos;
+use oz_lexer::Token;
 
 fn parse_helper(src: &str) -> Result<Vec<Spanned<Statement>>, String> {
-
     let lexer = Token::lexer(src);
     let mut tokens = Vec::new();
     for (token_res, span) in lexer.spanned() {

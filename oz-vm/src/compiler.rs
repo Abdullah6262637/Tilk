@@ -1,5 +1,5 @@
 use crate::instruction::{Instruction, Val};
-use oz_parser::ast::{Expr, Statement, BinaryOp, UnaryOp, Literal, StepDir, Spanned};
+use oz_parser::ast::{BinaryOp, Expr, Literal, Spanned, Statement, StepDir, UnaryOp};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -41,17 +41,20 @@ impl Compiler {
         if !self.scopes.is_empty() {
             let slot = self.next_local;
             self.next_local += 1;
-            self.scopes.last_mut().unwrap().insert(name.to_string(), slot);
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .insert(name.to_string(), slot);
             VarRef::Local(slot)
         } else {
             VarRef::Global(name.to_string())
         }
     }
 
-
-
-
-    pub fn compile_program(mut self, stmts: &[Spanned<Statement>]) -> Result<Vec<Instruction>, String> {
+    pub fn compile_program(
+        mut self,
+        stmts: &[Spanned<Statement>],
+    ) -> Result<Vec<Instruction>, String> {
         for stmt in stmts {
             self.compile_stmt(stmt)?;
         }
@@ -60,19 +63,22 @@ impl Compiler {
 
     fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<(), String> {
         match &expr.node {
-
             Expr::Literal(lit) => match lit {
-                Literal::Number(n) => self.instructions.push(Instruction::Constant(Val::Number(*n))),
-                Literal::String(s) => self.instructions.push(Instruction::Constant(Val::String(s.clone()))),
-                Literal::Boolean(b) => self.instructions.push(Instruction::Constant(Val::Boolean(*b))),
+                Literal::Number(n) => self
+                    .instructions
+                    .push(Instruction::Constant(Val::Number(*n))),
+                Literal::String(s) => self
+                    .instructions
+                    .push(Instruction::Constant(Val::String(s.clone()))),
+                Literal::Boolean(b) => self
+                    .instructions
+                    .push(Instruction::Constant(Val::Boolean(*b))),
                 Literal::Bos => self.instructions.push(Instruction::Constant(Val::Bos)),
             },
-            Expr::Identifier(name) => {
-                match self.get_variable(name) {
-                    VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot)),
-                }
-            }
+            Expr::Identifier(name) => match self.get_variable(name) {
+                VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(slot)),
+                VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot)),
+            },
             Expr::Unary(op, operand) => {
                 self.compile_expr(operand)?;
                 match op {
@@ -80,72 +86,73 @@ impl Compiler {
                     UnaryOp::Not => self.instructions.push(Instruction::Not),
                 }
             }
-            Expr::Binary(lhs, op, rhs) => {
-                match op {
-                    BinaryOp::And => {
-                        self.compile_expr(lhs)?;
-                        let jump_idx = self.instructions.len();
-                        self.instructions.push(Instruction::JumpIfFalseKeep(0));
-                        self.instructions.push(Instruction::Pop);
-                        self.compile_expr(rhs)?;
-                        let end_idx = self.instructions.len();
-                        self.instructions[jump_idx] = Instruction::JumpIfFalseKeep(end_idx);
-                    }
-                    BinaryOp::Or => {
-                        self.compile_expr(lhs)?;
-                        let jump_idx = self.instructions.len();
-                        self.instructions.push(Instruction::JumpIfTrueKeep(0));
-                        self.instructions.push(Instruction::Pop);
-                        self.compile_expr(rhs)?;
-                        let end_idx = self.instructions.len();
-                        self.instructions[jump_idx] = Instruction::JumpIfTrueKeep(end_idx);
-                    }
-                    _ => {
-                        self.compile_expr(lhs)?;
-                        self.compile_expr(rhs)?;
-                        let inst = match op {
-                            BinaryOp::Add => Instruction::Add,
-                            BinaryOp::Sub => Instruction::Sub,
-                            BinaryOp::Mul => Instruction::Mul,
-                            BinaryOp::Div => Instruction::Div,
-                            BinaryOp::Mod => Instruction::Mod,
-                            BinaryOp::Eq => Instruction::Eq,
-                            BinaryOp::Ne => Instruction::Ne,
-                            BinaryOp::Lt => Instruction::Lt,
-                            BinaryOp::Gt => Instruction::Gt,
-                            BinaryOp::Le => Instruction::Le,
-                            BinaryOp::Ge => Instruction::Ge,
-                            BinaryOp::And | BinaryOp::Or => unreachable!(),
-                        };
-                        self.instructions.push(inst);
-                    }
+            Expr::Binary(lhs, op, rhs) => match op {
+                BinaryOp::And => {
+                    self.compile_expr(lhs)?;
+                    let jump_idx = self.instructions.len();
+                    self.instructions.push(Instruction::JumpIfFalseKeep(0));
+                    self.instructions.push(Instruction::Pop);
+                    self.compile_expr(rhs)?;
+                    let end_idx = self.instructions.len();
+                    self.instructions[jump_idx] = Instruction::JumpIfFalseKeep(end_idx);
                 }
-            }
+                BinaryOp::Or => {
+                    self.compile_expr(lhs)?;
+                    let jump_idx = self.instructions.len();
+                    self.instructions.push(Instruction::JumpIfTrueKeep(0));
+                    self.instructions.push(Instruction::Pop);
+                    self.compile_expr(rhs)?;
+                    let end_idx = self.instructions.len();
+                    self.instructions[jump_idx] = Instruction::JumpIfTrueKeep(end_idx);
+                }
+                _ => {
+                    self.compile_expr(lhs)?;
+                    self.compile_expr(rhs)?;
+                    let inst = match op {
+                        BinaryOp::Add => Instruction::Add,
+                        BinaryOp::Sub => Instruction::Sub,
+                        BinaryOp::Mul => Instruction::Mul,
+                        BinaryOp::Div => Instruction::Div,
+                        BinaryOp::Mod => Instruction::Mod,
+                        BinaryOp::Eq => Instruction::Eq,
+                        BinaryOp::Ne => Instruction::Ne,
+                        BinaryOp::Lt => Instruction::Lt,
+                        BinaryOp::Gt => Instruction::Gt,
+                        BinaryOp::Le => Instruction::Le,
+                        BinaryOp::Ge => Instruction::Ge,
+                        BinaryOp::And | BinaryOp::Or => unreachable!(),
+                    };
+                    self.instructions.push(inst);
+                }
+            },
 
             Expr::Call(name, args) => {
                 if name == "dahil_et" {
                     if args.len() != 1 {
-                        return Err("HATA: dahil_et tek bir dosya yolu parametresi almalıdır".to_string());
+                        return Err(
+                            "HATA: dahil_et tek bir dosya yolu parametresi almalıdır".to_string()
+                        );
                     }
                     if let Expr::Literal(Literal::String(path)) = &args[0].node {
-
                         let content = std::fs::read_to_string(path)
                             .map_err(|e| format!("Modül yüklenemedi ({}): {}", path, e))?;
-                        
-                        use oz_lexer::Token;
+
                         use logos::Logos;
+                        use oz_lexer::Token;
                         let lexer = Token::lexer(&content);
                         let mut tokens = Vec::new();
                         for (token_res, span) in lexer.spanned() {
                             match token_res {
                                 Ok(token) => tokens.push((token, span)),
-                                Err(_) => return Err(format!("Sözcüksel analiz hatası at {:?}", span)),
+                                Err(_) => {
+                                    return Err(format!("Sözcüksel analiz hatası at {:?}", span))
+                                }
                             }
                         }
-                        
+
                         let ast = oz_parser::parse_tokens(tokens, content.len())
                             .map_err(|e| format!("Ayrıştırma hatası: {:?}", e))?;
-                        
+
                         for stmt in &ast {
                             self.compile_stmt(stmt)?;
                         }
@@ -187,11 +194,13 @@ impl Compiler {
                 self.compile_expr(base)?;
                 let jump_error_idx = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfError(0));
-                
+
                 let err_var = self.declare_variable("hata_mesajı");
                 match &err_var {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
                 for stmt in body {
                     self.compile_stmt(stmt)?;
@@ -204,14 +213,12 @@ impl Compiler {
                 let end_idx = self.instructions.len();
                 self.instructions[jump_end_idx] = Instruction::Jump(end_idx);
             }
-
         }
         Ok(())
     }
 
     fn compile_stmt(&mut self, stmt: &Spanned<Statement>) -> Result<(), String> {
         match &stmt.node {
-
             Statement::VarDecl(name, value) | Statement::Assignment(name, value) => {
                 self.compile_expr(value)?;
                 match self.declare_variable(name) {
@@ -284,14 +291,18 @@ impl Compiler {
                 let var_ref = self.declare_variable(var);
                 match &var_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
                 let loop_start = self.instructions.len();
 
                 match &var_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
                 self.compile_expr(end)?;
                 match step_dir {
@@ -308,16 +319,21 @@ impl Compiler {
 
                 match &var_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
-                self.instructions.push(Instruction::Constant(Val::Number(1.0)));
+                self.instructions
+                    .push(Instruction::Constant(Val::Number(1.0)));
                 match step_dir {
                     StepDir::Artarak => self.instructions.push(Instruction::Add),
                     StepDir::Azalarak => self.instructions.push(Instruction::Sub),
                 }
                 match &var_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
                 self.instructions.push(Instruction::Jump(loop_start));
@@ -330,7 +346,7 @@ impl Compiler {
                 self.instructions.push(Instruction::Jump(0));
 
                 let fn_start = self.instructions.len();
-                
+
                 // local scope
                 self.scopes.push(HashMap::new());
                 let old_next_local = self.next_local;
@@ -339,8 +355,12 @@ impl Compiler {
                 for param in params.iter().rev() {
                     let param_ref = self.declare_variable(param);
                     match &param_ref {
-                        VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                        VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                        VarRef::Local(slot) => {
+                            self.instructions.push(Instruction::StoreLocal(*slot))
+                        }
+                        VarRef::Global(slot) => self
+                            .instructions
+                            .push(Instruction::StoreGlobal(slot.clone())),
                     }
                 }
 
@@ -361,11 +381,13 @@ impl Compiler {
                     param_count: params.len(),
                     entry_ip: fn_start,
                 }));
-                
+
                 let fn_var = self.declare_variable(name);
                 match &fn_var {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
             }
             Statement::Return(opt_expr) => {
@@ -379,24 +401,30 @@ impl Compiler {
             Statement::Tamamlaninca(gorev_expr, body) => {
                 self.compile_expr(gorev_expr)?;
                 self.instructions.push(Instruction::AwaitTask);
-                
+
                 let sonuc_ref = self.declare_variable("sonuç");
                 match &sonuc_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
-                
+
                 match &sonuc_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
-                
+
                 let sonuc_ref_ascii = self.declare_variable("sonuc");
                 match &sonuc_ref_ascii {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
-                
+
                 for s in body {
                     self.compile_stmt(s)?;
                 }
@@ -405,4 +433,3 @@ impl Compiler {
         Ok(())
     }
 }
-

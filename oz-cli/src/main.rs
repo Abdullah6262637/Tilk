@@ -1,3 +1,6 @@
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::manual_flatten)]
+#![allow(clippy::unnecessary_map_or)]
 mod c_codegen;
 
 use clap::{Parser as ClapParser, Subcommand};
@@ -62,7 +65,11 @@ struct PaketDetails {
     giris: String,
 }
 
-fn print_parser_errors(errors: Vec<chumsky::error::Simple<oz_lexer::Token>>, file_name: &str, source: &str) {
+fn print_parser_errors(
+    errors: Vec<chumsky::error::Simple<oz_lexer::Token>>,
+    file_name: &str,
+    source: &str,
+) {
     use ariadne::{Color, Label, Report, ReportKind, Source};
 
     for err in errors {
@@ -126,7 +133,6 @@ fn run_file(file: &PathBuf) -> Result<(), String> {
                     )
                     .finish()
                     .eprint((file_name.clone(), Source::from(&content)))
-
                     .unwrap();
                 return Err("Sözcüksel analiz hatası".to_string());
             }
@@ -151,7 +157,6 @@ fn run_file(file: &PathBuf) -> Result<(), String> {
     vm.run()?;
     Ok(())
 }
-
 
 fn main() {
     let cli = Cli::parse();
@@ -201,7 +206,6 @@ fn main() {
                             )
                             .finish()
                             .eprint((file_name.clone(), Source::from(&content)))
-
                             .unwrap();
                         std::process::exit(1);
                     }
@@ -219,7 +223,6 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-
         }
         Commands::Calistir { file } => {
             let target_file = match file {
@@ -244,7 +247,9 @@ fn main() {
                         };
                         PathBuf::from(config.paket.giris)
                     } else {
-                        eprintln!("HATA: Çalıştırılacak dosya belirtilmedi ve tilk.toml bulunamadı.");
+                        eprintln!(
+                            "HATA: Çalıştırılacak dosya belirtilmedi ve tilk.toml bulunamadı."
+                        );
                         std::process::exit(1);
                     }
                 }
@@ -294,7 +299,10 @@ giris = "kaynak/ana.oz"
 "#;
             fs::write(testler_dir.join("test_ana.oz"), test_content).unwrap();
 
-            println!("Başarılı: '{}' adında yeni bir TİLK projesi oluşturuldu.", isim);
+            println!(
+                "Başarılı: '{}' adında yeni bir TİLK projesi oluşturuldu.",
+                isim
+            );
         }
         Commands::Derle { yerel } => {
             let toml_path = PathBuf::from("tilk.toml");
@@ -357,15 +365,22 @@ giris = "kaynak/ana.oz"
                 println!("  -> C kaynak kodu üretildi: {}", c_file_path.display());
 
                 println!("Yerel binary'ye derleniyor...");
-                let exe_name = if cfg!(target_os = "windows") { "program.exe" } else { "program" };
-                
+                let exe_name = if cfg!(target_os = "windows") {
+                    "program.exe"
+                } else {
+                    "program"
+                };
+
                 let mut compiled = false;
                 let output = std::process::Command::new("gcc")
                     .args(&["-O3", "program.c", "-o", exe_name, "-lm"])
                     .output();
                 if let Ok(out) = output {
                     if out.status.success() {
-                        println!("Başarılı: GCC kullanılarak yerel binary derlendi -> {}", exe_name);
+                        println!(
+                            "Başarılı: GCC kullanılarak yerel binary derlendi -> {}",
+                            exe_name
+                        );
                         compiled = true;
                     }
                 }
@@ -376,7 +391,10 @@ giris = "kaynak/ana.oz"
                         .output();
                     if let Ok(out) = output {
                         if out.status.success() {
-                            println!("Başarılı: Clang kullanılarak yerel binary derlendi -> {}", exe_name);
+                            println!(
+                                "Başarılı: Clang kullanılarak yerel binary derlendi -> {}",
+                                exe_name
+                            );
                             compiled = true;
                         }
                     }
@@ -388,20 +406,27 @@ giris = "kaynak/ana.oz"
                         .output();
                     if let Ok(out) = output {
                         if out.status.success() {
-                            println!("Başarılı: MSVC kullanılarak yerel binary derlendi -> {}", exe_name);
+                            println!(
+                                "Başarılı: MSVC kullanılarak yerel binary derlendi -> {}",
+                                exe_name
+                            );
                             compiled = true;
                         }
                     }
                 }
 
                 if !compiled {
-                    println!("UYARI: Sistemde yüklü bir C derleyicisi (gcc, clang, cl) bulunamadı.");
+                    println!(
+                        "UYARI: Sistemde yüklü bir C derleyicisi (gcc, clang, cl) bulunamadı."
+                    );
                     println!("Tilk kodundan üretilen C kaynak kodunu manuel derlemek için:");
                     println!("  gcc -O3 program.c -o {} -lm", exe_name);
                 }
             } else {
                 match run_file(&entry_file) {
-                    Ok(_) => println!("Derleme başarılı! Herhangi bir sözdizimi hatası bulunamadı."),
+                    Ok(_) => {
+                        println!("Derleme başarılı! Herhangi bir sözdizimi hatası bulunamadı.")
+                    }
                     Err(e) => {
                         eprintln!("{}", e);
                         std::process::exit(1);
@@ -478,7 +503,8 @@ giris = "kaynak/ana.oz"
                 for (ad, surum) in bagimliliklar {
                     println!("Paket deposu taranıyor: '{}' (sürüm {})...", ad, surum);
                     let code = match ad.as_str() {
-                        "matematik" => r#"
+                        "matematik" => {
+                            r#"
 işlev topla(a, b) {
     döndür a + b;
 }
@@ -488,21 +514,24 @@ işlev carp(a, b) {
 işlev kare(a) {
     döndür üs(a, 2);
 }
-"#,
-                        "dizi_araclari" => r#"
+"#
+                        }
+                        "dizi_araclari" => {
+                            r#"
 işlev ilk_eleman(d) {
     döndür d[0];
 }
 işlev son_eleman(d) {
     döndür d[boyut(d) - 1];
 }
-"#,
+"#
+                        }
                         _ => {
                             eprintln!("HATA: '{}' paketi depoda bulunamadı.", ad);
                             std::process::exit(1);
                         }
                     };
-                    
+
                     let target_path = kitaplik_dir.join(format!("{}.oz", ad));
                     fs::write(&target_path, code).unwrap();
                     println!("  -> İndirildi ve kaydedildi: {}", target_path.display());

@@ -1,4 +1,3 @@
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -66,4 +65,3 @@ pub enum Instruction {
     JumpIfFalseKeep(usize),
     JumpIfTrueKeep(usize),
 }
-

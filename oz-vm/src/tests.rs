@@ -1,8 +1,7 @@
 use super::*;
 use instruction::Val;
-use std::rc::Rc;
 use std::cell::RefCell;
-
+use std::rc::Rc;
 
 #[test]
 fn test_kosul() {
@@ -123,14 +122,28 @@ fn test_dosya_io() {
     assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
     let (_, vm) = res.unwrap();
     assert_eq!(vm.get_global("yazildi_res"), Some(Val::Boolean(true)));
-    assert_eq!(vm.get_global("icerik_res"), Some(Val::String("Tilk Dosya Sistemi".to_string())));
+    assert_eq!(
+        vm.get_global("icerik_res"),
+        Some(Val::String("Tilk Dosya Sistemi".to_string()))
+    );
     assert_eq!(vm.get_global("silindi_res"), Some(Val::Boolean(true)));
-    assert_eq!(vm.get_global("hata_res"), Some(Val::String("yakalandi".to_string())));
-    assert_eq!(vm.get_global("hata_icerik_res"), Some(Val::String("ok".to_string())));
-    
+    assert_eq!(
+        vm.get_global("hata_res"),
+        Some(Val::String("yakalandi".to_string()))
+    );
+    assert_eq!(
+        vm.get_global("hata_icerik_res"),
+        Some(Val::String("ok".to_string()))
+    );
+
     let msg = vm.get_global("hata_mesaji_res").unwrap();
     if let Val::String(s) = msg {
-        assert!(s.contains("okunamadı") || s.contains("okunamadi") || s.contains("bulunamadı") || s.contains("bulunamadi"));
+        assert!(
+            s.contains("okunamadı")
+                || s.contains("okunamadi")
+                || s.contains("bulunamadı")
+                || s.contains("bulunamadi")
+        );
     } else {
         panic!("Hata mesajı string olmalı!");
     }
@@ -220,9 +233,15 @@ fn test_haritalar_ve_mutasyon() {
     assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
     let (_, vm) = res.unwrap();
     assert_eq!(vm.get_global("res_boyut_ilk"), Some(Val::Number(2.0)));
-    assert_eq!(vm.get_global("res_ad"), Some(Val::String("Tilk".to_string())));
+    assert_eq!(
+        vm.get_global("res_ad"),
+        Some(Val::String("Tilk".to_string()))
+    );
     assert_eq!(vm.get_global("res_yas_yeni"), Some(Val::Number(4.0)));
-    assert_eq!(vm.get_global("res_sehir_yeni"), Some(Val::String("Bozkır".to_string())));
+    assert_eq!(
+        vm.get_global("res_sehir_yeni"),
+        Some(Val::String("Bozkır".to_string()))
+    );
     assert_eq!(vm.get_global("res_boyut_son"), Some(Val::Number(3.0)));
     assert_eq!(vm.get_global("res_dizi_ilk"), Some(Val::Number(99.0)));
 }
@@ -245,7 +264,7 @@ fn test_dahil_et() {
         sonuc_sabit = sabit_deger;
     "#;
     let res = run_bytecode(src);
-    
+
     let _ = fs::remove_file(module_path);
 
     let (_, vm) = res.unwrap();
@@ -253,13 +272,13 @@ fn test_dahil_et() {
     assert_eq!(vm.get_global("sonuc_sabit"), Some(Val::Number(42.0)));
 }
 
-
 fn run_golden_test_file(src_path: &str, expected_stdout_path: &str) {
     let src = std::fs::read_to_string(src_path).expect("Kaynak dosya okunamadı");
-    let expected = std::fs::read_to_string(expected_stdout_path).expect("Beklenen çıktı dosyası okunamadı");
-    
-    use oz_lexer::Token;
+    let expected =
+        std::fs::read_to_string(expected_stdout_path).expect("Beklenen çıktı dosyası okunamadı");
+
     use logos::Logos;
+    use oz_lexer::Token;
 
     let lexer = Token::lexer(&src);
     let mut tokens = Vec::new();
@@ -277,22 +296,40 @@ fn run_golden_test_file(src_path: &str, expected_stdout_path: &str) {
     let mut vm = vm::VM::new(insts);
     let stdout_buffer = Rc::new(RefCell::new(Vec::new()));
     vm.stdout = Some(stdout_buffer.clone());
-    
+
     vm.run().expect("VM çalışma hatası");
-    
+
     let actual_output = String::from_utf8(stdout_buffer.borrow().clone()).unwrap();
     let actual_norm = actual_output.replace("\r\n", "\n").trim_end().to_string();
     let expected_norm = expected.replace("\r\n", "\n").trim_end().to_string();
-    
-    assert_eq!(actual_norm, expected_norm, "Golden test başarısız! Dosya: {}", src_path);
+
+    assert_eq!(
+        actual_norm, expected_norm,
+        "Golden test başarısız! Dosya: {}",
+        src_path
+    );
 }
 
 #[test]
 fn test_golden_ornekler() {
-    run_golden_test_file("../examples/ornek1_kosul.oz", "../tests/golden/ornek1_kosul.stdout");
-    run_golden_test_file("../examples/ornek2_dongu.oz", "../tests/golden/ornek2_dongu.stdout");
-    run_golden_test_file("../examples/ornek3_islev.oz", "../tests/golden/ornek3_islev.stdout");
-    run_golden_test_file("../examples/ornek4_hesap.oz", "../tests/golden/ornek4_hesap.stdout");
-    run_golden_test_file("../examples/ornek5_karma.oz", "../tests/golden/ornek5_karma.stdout");
+    run_golden_test_file(
+        "../examples/ornek1_kosul.oz",
+        "../tests/golden/ornek1_kosul.stdout",
+    );
+    run_golden_test_file(
+        "../examples/ornek2_dongu.oz",
+        "../tests/golden/ornek2_dongu.stdout",
+    );
+    run_golden_test_file(
+        "../examples/ornek3_islev.oz",
+        "../tests/golden/ornek3_islev.stdout",
+    );
+    run_golden_test_file(
+        "../examples/ornek4_hesap.oz",
+        "../tests/golden/ornek4_hesap.stdout",
+    );
+    run_golden_test_file(
+        "../examples/ornek5_karma.oz",
+        "../tests/golden/ornek5_karma.stdout",
+    );
 }
-
