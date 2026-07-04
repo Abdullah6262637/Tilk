@@ -109,7 +109,7 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
                     let embedded_content = match path_str.as_str() {
                         "std::sonuc" => Some("işlev basarili(deger) { r = {}; r[\"tur\"] = \"basarili\"; r[\"deger\"] = deger; döndür r; } işlev hata(mesaj) { r = {}; r[\"tur\"] = \"hata\"; r[\"hata\"] = mesaj; döndür r; }".to_string()),
                         "std::matematik" => Some("işlev karekok(x) { döndür kök(x); } işlev ust(taban, kuvvet) { döndür üs(taban, kuvvet); } işlev mutlak_deger(x) { döndür mutlak(x); }".to_string()),
-                        "std::dosya" => Some("dahil_et(\"std::sonuc\"); işlev oku(yol) { döndür (basarili(dosya_oku(yol))) hata_ise { döndür hata(\"Okuma hatası\"); }; } işlev yaz(yol, icerik) { döndür (basarili(dosya_yaz(yol, icerik))) hata_ise { döndür hata(\"Yazma hatası\"); }; } işlev sil(yol) { döndür (basarili(dosya_sil(yol))) hata_ise { döndür hata(\"Silme hatası\"); }; }".to_string()),
+                        "std::dosya" => Some("dahil_et(\"std::sonuc\"); işlev oku(yol) { döndür (basarili(dosya_oku(yol))) hata_ise { döndür hata(\"Okuma hatası\"); }; } işlev yaz_yardimci(yol, icerik) { dosya_yaz(yol, icerik); döndür basarili(boş); } işlev yaz(yol, icerik) { döndür (yaz_yardimci(yol, icerik)) hata_ise { döndür hata(\"Yazma hatası\"); }; } işlev sil_yardimci(yol) { dosya_sil(yol); döndür basarili(boş); } işlev sil(yol) { döndür (sil_yardimci(yol)) hata_ise { döndür hata(\"Silme hatası\"); }; }".to_string()),
                         "std::zaman" => Some("işlev simdi() { döndür şimdi(); } işlev bekle(ms) { döndür uyku(ms); }".to_string()),
                         _ => None,
                     };
@@ -174,7 +174,10 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
 
             let mut evaluated_args = Vec::new();
             for arg in args {
-                evaluated_args.push(eval_expr(arg, env)?);
+                match eval_expr(arg, env) {
+                    Ok(v) => evaluated_args.push(v),
+                    Err(e) => return Ok(Val::Hata(e)),
+                }
             }
 
             match func {
@@ -194,7 +197,13 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
                     let res = eval_program(&body, &child_env)?;
                     Ok(res.unwrap_or(Val::Bos))
                 }
-                Val::Builtin(f) => Ok(f(evaluated_args)),
+                Val::Builtin(f) => {
+                    let call_res = f(evaluated_args);
+                    match call_res {
+                        Val::Hata(msg) => Err(msg),
+                        other => Ok(other),
+                    }
+                }
                 _ => Err(format!("HATA: '{}' bir işlev değil", name)),
             }
         }
@@ -258,14 +267,25 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
             }
         }
         Expr::HataIse(base, body) => {
-            let res = eval_expr(base, env)?;
-            if let Val::Hata(msg) = res {
+            let res = eval_expr(base, env);
+            if let Err(msg) = res {
                 let child_env = Env::extend(env);
-                child_env.set("hata_mesajı".to_string(), Val::String(msg));
-                let body_res = eval_program(body, &child_env)?;
-                Ok(body_res.unwrap_or(Val::Bos))
+                child_env.set("hata_mesajı".to_string(), Val::String(msg.clone()));
+                child_env.set("hata_mesaji".to_string(), Val::String(msg));
+                match eval_program(body, &child_env)? {
+                    Some(val) => Ok(val),
+                    None => Ok(Val::Bos),
+                }
+            } else if let Ok(Val::Hata(msg)) = res {
+                let child_env = Env::extend(env);
+                child_env.set("hata_mesajı".to_string(), Val::String(msg.clone()));
+                child_env.set("hata_mesaji".to_string(), Val::String(msg));
+                match eval_program(body, &child_env)? {
+                    Some(val) => Ok(val),
+                    None => Ok(Val::Bos),
+                }
             } else {
-                Ok(res)
+                res
             }
         }
     }

@@ -142,7 +142,7 @@ impl Compiler {
                         let embedded_content = match path_str.as_str() {
                             "std::sonuc" => Some("işlev basarili(deger) { r = {}; r[\"tur\"] = \"basarili\"; r[\"deger\"] = deger; döndür r; } işlev hata(mesaj) { r = {}; r[\"tur\"] = \"hata\"; r[\"hata\"] = mesaj; döndür r; }".to_string()),
                             "std::matematik" => Some("işlev karekok(x) { döndür kök(x); } işlev ust(taban, kuvvet) { döndür üs(taban, kuvvet); } işlev mutlak_deger(x) { döndür mutlak(x); }".to_string()),
-                            "std::dosya" => Some("dahil_et(\"std::sonuc\"); işlev oku(yol) { döndür (basarili(dosya_oku(yol))) hata_ise { döndür hata(\"Okuma hatası\"); }; } işlev yaz(yol, icerik) { döndür (basarili(dosya_yaz(yol, icerik))) hata_ise { döndür hata(\"Yazma hatası\"); }; } işlev sil(yol) { döndür (basarili(dosya_sil(yol))) hata_ise { döndür hata(\"Silme hatası\"); }; }".to_string()),
+                            "std::dosya" => Some("dahil_et(\"std::sonuc\"); işlev oku(yol) { döndür (basarili(dosya_oku(yol))) hata_ise { döndür hata(\"Okuma hatası\"); }; } işlev yaz_yardimci(yol, icerik) { dosya_yaz(yol, icerik); döndür basarili(boş); } işlev yaz(yol, icerik) { döndür (yaz_yardimci(yol, icerik)) hata_ise { döndür hata(\"Yazma hatası\"); }; } işlev sil_yardimci(yol) { dosya_sil(yol); döndür basarili(boş); } işlev sil(yol) { döndür (sil_yardimci(yol)) hata_ise { döndür hata(\"Silme hatası\"); }; }".to_string()),
                             "std::zaman" => Some("işlev simdi() { döndür şimdi(); } işlev bekle(ms) { döndür uyku(ms); }".to_string()),
                             _ => None,
                         };
@@ -242,10 +242,19 @@ impl Compiler {
 
                 let err_var = self.declare_variable("hata_mesajı");
                 match &err_var {
+                    VarRef::Local(slot) => {
+                        self.instructions.push(Instruction::StoreLocal(*slot));
+                        self.instructions.push(Instruction::LoadLocal(*slot));
+                    }
+                    VarRef::Global(slot) => {
+                        self.instructions.push(Instruction::StoreGlobal(slot.clone()));
+                        self.instructions.push(Instruction::LoadGlobal(slot.clone()));
+                    }
+                }
+                let err_var_ascii = self.declare_variable("hata_mesaji");
+                match &err_var_ascii {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self
-                        .instructions
-                        .push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
                 }
                 for stmt in body {
                     self.compile_stmt(stmt)?;
