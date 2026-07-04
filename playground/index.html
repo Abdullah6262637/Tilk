@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ÖZGÜN Dil Playground</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-base: #0a0c10;
+            --bg-card: rgba(20, 24, 33, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            
+            --color-primary: #00e5ff;    /* Neon Teal */
+            --color-secondary: #ff5722;  /* Neon Orange */
+            --color-success: #00e676;    /* Emerald Green */
+            --color-error: #ff1744;      /* Cyber Pink/Red */
+            
+            --text-main: #f5f6f9;
+            --text-muted: #8a94a6;
+            --font-display: 'Outfit', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: var(--font-display);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Glassmorphism Background Pattern */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.15) 0%, transparent 70%);
+            top: 10%;
+            left: 5%;
+            z-index: -1;
+            filter: blur(50px);
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 87, 34, 0.1) 0%, transparent 70%);
+            bottom: 10%;
+            right: 5%;
+            z-index: -1;
+            filter: blur(60px);
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(10, 12, 16, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .badge {
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            color: var(--color-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .example-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        select {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: var(--font-display);
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--color-primary);
+        }
+
+        /* Main Workspace Layout */
+        main {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            flex-grow: 1;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem;
+            max-height: calc(100vh - 85px);
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-title::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-primary);
+        }
+
+        /* Editor Styles */
+        .editor-container {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+        }
+
+        .line-numbers {
+            width: 40px;
+            padding: 1.5rem 0.5rem;
+            text-align: right;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.15);
+            border-right: 1px solid var(--border-color);
+            user-select: none;
+        }
+
+        textarea {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-family: var(--font-code);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 1.5rem;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+
+        /* Buttons & Actions */
+        .btn {
+            background: linear-gradient(135deg, var(--color-primary), #00b0ff);
+            border: none;
+            color: #05050a;
+            padding: 0.6rem 1.5rem;
+            font-weight: 700;
+            font-family: var(--font-display);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.5);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Output Tabs Panel */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+            background: rgba(0, 229, 255, 0.03);
+        }
+
+        .tab-content {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Terminal styling for console */
+        .console-output {
+            color: #e0e0e0;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .console-log {
+            color: var(--color-success);
+        }
+
+        .console-error {
+            color: var(--color-error);
+            background: rgba(255, 23, 68, 0.05);
+            padding: 0.5rem;
+            border-radius: 4px;
+            border-left: 3px solid var(--color-error);
+        }
+
+        /* Token Table styling */
+        .token-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-code);
+        }
+
+        .token-table th, .token-table td {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .token-table th {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .token-table td {
+            color: var(--text-main);
+        }
+
+        /* AST JSON viewing styling */
+        pre {
+            white-space: pre-wrap;
+            color: #d1d5db;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-section">
+            <div class="logo">Özgün</div>
+            <div class="badge">Playground v0.1.0</div>
+        </div>
+        <div class="example-selector">
+            <span style="font-size: 0.9rem; color: var(--text-muted); margin-right: 0.5rem;">Örnek Yükle:</span>
+            <select id="exampleSelect">
+                <option value="faktöriyel">Recursive Faktöriyel</option>
+                <option value="kosul">Koşul Yapısı (ise/değilse)</option>
+                <option value="dongu">Döngü Yapıları (iken / aralık)</option>
+                <option value="islev">Fonksiyon Tanımı</option>
+                <option value="hesap">Temel Matematik İşlemleri</option>
+            </select>
+            <button class="btn" id="runBtn" style="margin-left: 1.5rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Çalıştırmak
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Left Panel: Editor -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Kod Editörü</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">dosya: kaynak.oz</div>
+            </div>
+            <div class="editor-container">
+                <div class="line-numbers" id="lineNumbers">1<br>2<br>3<br>4<br>5</div>
+                <textarea id="codeEditor" spellcheck="false" autocomplete="off">yazdır("Merhaba Dünya!");</textarea>
+            </div>
+        </div>
+
+        <!-- Right Panel: Visualizer / Tabs -->
+        <div class="panel">
+            <div class="tabs">
+                <div class="tab active" data-tab="console">Konsol Çıktısı</div>
+                <div class="tab" data-tab="ast">Soyut Sözdizimi Ağacı (AST)</div>
+                <div class="tab" data-tab="tokens">Sözcük Analizi (Tokens)</div>
+            </div>
+            
+            <!-- Console Tab -->
+            <div class="tab-content" id="tabContent-console">
+                <div class="console-output" id="consoleOutput">ÖZGÜN kodunu çalıştırmak için 'Çalıştır' butonuna basın...</div>
+            </div>
+
+            <!-- AST Tab -->
+            <div class="tab-content hidden" id="tabContent-ast">
+                <pre id="astOutput">AST burada görüntülenecek...</pre>
+            </div>
+
+            <!-- Token Tab -->
+            <div class="tab-content hidden" id="tabContent-tokens">
+                <table class="token-table">
+                    <thead>
+                        <tr>
+                            <th>Tip (Variant)</th>
+                            <th>Değer (Sözcük)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tokenOutput">
+                        <tr>
+                            <td colspan="2" style="color: var(--text-muted); text-align: center;">Token listesi burada görüntülenecek...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SAMPLES DEFINITIONS ---
+        const samples = {
+            faktöriyel: `işlev faktöriyel(n) {
+    n <= 1 ise {
+        döndür 1;
+    }
+    döndür n * faktöriyel(n - 1);
+}
+
+limit = 5;
+i, 1'den limit'e dek artarak {
+    yazdır(faktöriyel(i));
+}`,
+            kosul: `sayı = 8;
+sayı > 5 ise {
+    yazdır("Sayı 5'ten büyüktür.");
+} değilse {
+    yazdır("Sayı 5 veya daha küçüktür.");
+}`,
+            dongu: `sayaç = 1;
+sayaç <= 3 iken {
+    yazdır("sayaç:", sayaç);
+    sayaç = sayaç + 1;
+}
+
+i, 1'den 5'e dek artarak {
+    yazdır("sayaç range:", i);
+}`,
+            islev: `işlev topla(a, b) {
+    döndür a + b;
+}
+
+sonuç = topla(10, 20);
+yazdır("topla sonucu:", sonuç);`,
+            hesap: `a = 15;
+b = 4;
+toplam = a + b;
+fark = a - b;
+çarpım = a * b;
+bölüm = a / b;
+kalan = a % b;
+
+yazdır("Toplam:", toplam);
+yazdır("Kalan:", kalan);`
+        };
+
+        // --- 2. EDITOR INTERACTION & LINE NUMBERS ---
+        const codeEditor = document.getElementById('codeEditor');
+        const lineNumbers = document.getElementById('lineNumbers');
+        const exampleSelect = document.getElementById('exampleSelect');
+
+        function updateLineNumbers() {
+            const lines = codeEditor.value.split('\n').length;
+            lineNumbers.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+        }
+
+        codeEditor.addEventListener('input', updateLineNumbers);
+        exampleSelect.addEventListener('change', () => {
+            codeEditor.value = samples[exampleSelect.value] || '';
+            updateLineNumbers();
+        });
+
+        // Initialize editor line numbers and initial code
+        codeEditor.value = samples.faktöriyel;
+        updateLineNumbers();
+
+        // --- 3. TABS SWITCHING ---
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.add('hidden'));
+
+                tab.classList.add('active');
+                document.getElementById(`tabContent-${tab.dataset.tab}`).classList.remove('hidden');
+            });
+        });
+
+        // --- 4. COMPILER / ENGINE IMPLEMENTATION IN JS ---
+        
+        // 4.1 Turkish lowercasing matching rust implementation
+        function turkishLowercase(str) {
+            let result = '';
+            for (let c of str) {
+                if (c === 'İ') result += 'i';
+                else if (c === 'I') result += 'ı';
+                else result += c.toLowerCase();
+            }
+            return result;
+        }
+
+        // 4.2 Token definitions
+        const TokenType = {
+            Islev: 'Islev', Dondur: 'Dondur', Degilse: 'Degilse',
+            Dogru: 'Dogru', Yanlis: 'Yanlis', Bos: 'Bos',
+            Assign: 'Assign', Eq: 'Eq', Ne: 'Ne', Lt: 'Lt', Gt: 'Gt', Le: 'Le', Ge: 'Ge',
+            Plus: 'Plus', Minus: 'Minus', Mul: 'Mul', Div: 'Div', Mod: 'Mod',
+            And: 'And', Or: 'Or',
+            LParen: 'LParen', RParen: 'RParen', LBrace: 'LBrace', RBrace: 'RBrace',
+            Comma: 'Comma', Semicolon: 'Semicolon',
+            Number: 'Number', String: 'String', Identifier: 'Identifier'
+        };
+
+        // 4.3 Lexer
+        function tokenize(src) {
+            let idx = 0;
+            const tokens = [];
+
+            while (idx < src.length) {
+                const char = src[idx];
+
+                // Skip spaces, tabs, newlines, and apostrophe (')
+                if (/[ \t\n\r']/.test(char)) {
+                    idx++;
+                    continue;
+                }
+
+                // Operators & symbols
+                if (src.startsWith('==', idx)) { tokens.push({ type: TokenType.Eq, val: '==' }); idx += 2; continue; }
+                if (src.startsWith('!=', idx)) { tokens.push({ type: TokenType.Ne, val: '!=' }); idx += 2; continue; }
+                if (src.startsWith('<=', idx)) { tokens.push({ type: TokenType.Le, val: '<=' }); idx += 2; continue; }
+                if (src.startsWith('>=', idx)) { tokens.push({ type: TokenType.Ge, val: '>=' }); idx += 2; continue; }
+                if (char === '=') { tokens.push({ type: TokenType.Assign, val: '=' }); idx++; continue; }
+                if (char === '<') { tokens.push({ type: TokenType.Lt, val: '<' }); idx++; continue; }
+                if (char === '>') { tokens.push({ type: TokenType.Gt, val: '>' }); idx++; continue; }
+                if (char === '+') { tokens.push({ type: TokenType.Plus, val: '+' }); idx++; continue; }
+                if (char === '-') { tokens.push({ type: TokenType.Minus, val: '-' }); idx++; continue; }
+                if (char === '*') { tokens.push({ type: TokenType.Mul, val: '*' }); idx++; continue; }
+                if (char === '/') { tokens.push({ type: TokenType.Div, val: '/' }); idx++; continue; }
+                if (char === '%') { tokens.push({ type: TokenType.Mod, val: '%' }); idx++; continue; }
+                
+                if (char === '(') { tokens.push({ type: TokenType.LParen, val: '(' }); idx++; continue; }
+                if (char === ')') { tokens.push({ type: TokenType.RParen, val: ')' }); idx++; continue; }
+                if (char === '{') { tokens.push({ type: TokenType.LBrace, val: '{' }); idx++; continue; }
+                if (char === '}') { tokens.push({ type: TokenType.RBrace, val: '}' }); idx++; continue; }
+                if (char === ',') { tokens.push({ type: TokenType.Comma, val: ',' }); idx++; continue; }
+                if (char === ';') { tokens.push({ type: TokenType.Semicolon, val: ';' }); idx++; continue; }
+
+                // String literals
+                if (char === '"') {
+                    let end = idx + 1;
+                    while (end < src.length && src[end] !== '"') {
+                        end++;
+                    }
+                    if (end >= src.length) throw new Error("Açık kalmış metin sabiti (string literal)");
+                    const strVal = src.substring(idx + 1, end);
+                    tokens.push({ type: TokenType.String, val: strVal });
+                    idx = end + 1;
+                    continue;
+                }
+
+                // Number literals
+                if (/[0-9]/.test(char)) {
+                    let end = idx;
+                    while (end < src.length && /[0-9.]/.test(src[end])) {
+                        end++;
+                    }
+                    const numStr = src.substring(idx, end);
+                    tokens.push({ type: TokenType.Number, val: numStr });
+                    idx = end;
+                    continue;
+                }
+
+                // Identifiers & keywords (Turkish Unicode characters)
+                if (/[a-zA-ZçğıişöüÇĞIİŞÖÜ_]/.test(char)) {
+                    let end = idx;
+                    while (end < src.length && /[a-zA-Z0-9çğıişöüÇĞIİŞÖÜ_]/.test(src[end])) {
+                        end++;
+                    }
+                    const rawVal = src.substring(idx, end);
+                    const val = turkishLowercase(rawVal);
+
+                    // Keywords
+                    if (val === 'işlev') tokens.push({ type: TokenType.Islev, val });
+                    else if (val === 'döndür') tokens.push({ type: TokenType.Dondur, val });
+                    else if (val === 'değilse') tokens.push({ type: TokenType.Degilse, val });
+                    else if (val === 'doğru') tokens.push({ type: TokenType.Dogru, val });
+                    else if (val === 'yanlış') tokens.push({ type: TokenType.Yanlis, val });
+                    else if (val === 'boş') tokens.push({ type: TokenType.Bos, val });
+                    else if (val === 've') tokens.push({ type: TokenType.And, val });
+                    else if (val === 'veya') tokens.push({ type: TokenType.Or, val });
+                    else tokens.push({ type: TokenType.Identifier, val });
+                    
+                    idx = end;
+                    continue;
+                }
+
+                throw new Error(`Sözcüksel Analiz Hatası: Bilinmeyen karakter '${char}'`);
+            }
+
+            return tokens;
+        }
+
+        // 4.4 Parser
+        class Parser {
+            constructor(tokens) {
+                this.tokens = tokens;
+                this.pos = 0;
+            }
+
+            peek() {
+                return this.tokens[this.pos] || null;
+            }
+
+            next() {
+                return this.tokens[this.pos++];
+            }
+
+            match(type) {
+                const tok = this.peek();
+                if (tok && tok.type === type) {
+                    return this.next();
+                }
+                return null;
+            }
+
+            expect(type, errMessage) {
+                const tok = this.match(type);
+                if (!tok) throw new Error(`Sözdizimi Hatası: ${errMessage}. Bulunan: ${JSON.stringify(this.peek())}`);
+                return tok;
+            }
+
+            // Suffix check matching parser.rs
+            matchSuffix(values) {
+                const tok = this.peek();
+                if (tok && tok.type === TokenType.Identifier && values.includes(tok.val)) {
+                    return this.next();
+                }
+                return null;
+            }
+
+            parse() {
+                const stmts = [];
+                while (this.peek()) {
+                    stmts.push(this.parseStatement());
+                }
+                return stmts;
+            }
+
+            parseStatement() {
+                const tok = this.peek();
+                if (!tok) throw new Error("Beklenmeyen kod sonu");
+
+                // işlev topla(a, b) { ... }
+                if (tok.type === TokenType.Islev) {
+                    this.next();
+                    const name = this.expect(TokenType.Identifier, "İşlev ismi bekleniyordu").val;
+                    this.expect(TokenType.LParen, "'(' bekleniyordu");
+                    const params = [];
+                    if (this.peek() && this.peek().type !== TokenType.RParen) {
+                        params.push(this.expect(TokenType.Identifier, "Parametre ismi bekleniyordu").val);
+                        while (this.match(TokenType.Comma)) {
+                            params.push(this.expect(TokenType.Identifier, "Parametre ismi bekleniyordu").val);
+                        }
+                    }
+                    this.expect(TokenType.RParen, "')' bekleniyordu");
+                    const body = this.parseBlock();
+                    return { type: 'FnDecl', name, params, body };
+                }
+
+                // döndür x;
+                if (tok.type === TokenType.Dondur) {
+                    this.next();
+                    let expr = null;
+                    if (this.peek() && this.peek().type !== TokenType.Semicolon) {
+                        expr = this.parseExpr();
+                    }
+                    this.expect(TokenType.Semicolon, "Satır sonu ';' bekleniyordu");
+                    return { type: 'Return', expr };
+                }
+
+                // If conditional: expr ise { ... } değilse { ... }
+                // Since expressions are parsed first, let's parse expression, then check if 'ise/se' suffix is present
+                const expr = this.parseExpr();
+                
+                // If it is followed by 'ise' or 'se'
+                if (this.peek() && this.peek().type === TokenType.Identifier && ['ise', 'se'].includes(this.peek().val)) {
+                    this.next(); // Consume 'ise'/'se'
+                    const thenBlock = this.parseBlock();
+                    let elseBlock = null;
+                    if (this.match(TokenType.Degilse)) {
+                        elseBlock = this.parseBlock();
+                    }
+                    return { type: 'If', cond: expr, thenBlock, elseBlock };
+                }
+
+                // While loop: expr iken { ... }
+                if (this.peek() && this.peek().type === TokenType.Identifier && this.peek().val === 'iken') {
+                    this.next(); // Consume 'iken'
+                    const body = this.parseBlock();
+                    return { type: 'While', cond: expr, body };
+                }
+
+                // For range loop: i , 1 'den 5 'e dek artarak { ... }
+                // In our grammar, the statement starts with identifier `i`
+                if (expr.type === 'Identifier' && this.match(TokenType.Comma)) {
+                    const startExpr = this.parseExpr();
+                    const suffix1 = this.matchSuffix(['dan', 'den', 'tan', 'ten']);
+                    if (!suffix1) throw new Error("Aralık döngüsünde 'den/dan/ten/tan' eki bekleniyordu");
+                    
+                    const endExpr = this.parseExpr();
+                    const suffix2 = this.matchSuffix(['a', 'e', 'ya', 'ye']);
+                    if (!suffix2) throw new Error("Aralık döngüsünde 'a/e/ya/ye' eki bekleniyordu");
+
+                    const suffix3 = this.matchSuffix(['dek']);
+                    if (!suffix3) throw new Error("Aralık döngüsünde 'dek' kelimesi bekleniyordu");
+
+                    let stepDir = 'Artarak';
+                    const stepTok = this.matchSuffix(['artarak', 'azalarak']);
+                    if (stepTok && stepTok.val === 'azalarak') {
+                        stepDir = 'Azalarak';
+                    }
+
+                    const body = this.parseBlock();
+                    return { type: 'For', var: expr.val, start: startExpr, end: endExpr, stepDir, body };
+                }
+
+                // x = 5;
+                if (expr.type === 'Identifier' && this.match(TokenType.Assign)) {
+                    const valExpr = this.parseExpr();
+                    this.expect(TokenType.Semicolon, "Satır sonu ';' bekleniyordu");
+                    return { type: 'VarDecl', name: expr.val, val: valExpr };
+                }
+
+                // Expression statement (e.g. call)
+                this.expect(TokenType.Semicolon, "Satır sonu ';' bekleniyordu");
+                return { type: 'ExprStmt', expr };
+            }
+
+            parseBlock() {
+                this.expect(TokenType.LBrace, "'{' bekleniyordu");
+                const stmts = [];
+                while (this.peek() && this.peek().type !== TokenType.RBrace) {
+                    stmts.push(this.parseStatement());
+                }
+                this.expect(TokenType.RBrace, "'}' bekleniyordu");
+                return stmts;
+            }
+
+            parseExpr() {
+                return this.parseLogicalOr();
+            }
+
+            parseLogicalOr() {
+                let node = this.parseLogicalAnd();
+                while (this.match(TokenType.Or)) {
+                    node = { type: 'Binary', left: node, op: 'Or', right: this.parseLogicalAnd() };
+                }
+                return node;
+            }
+
+            parseLogicalAnd() {
+                let node = this.parseEquality();
+                while (this.match(TokenType.And)) {
+                    node = { type: 'Binary', left: node, op: 'And', right: this.parseEquality() };
+                }
+                return node;
+            }
+
+            parseEquality() {
+                let node = this.parseComparison();
+                let op;
+                while ((op = this.match(TokenType.Eq) || this.match(TokenType.Ne))) {
+                    node = { type: 'Binary', left: node, op: op.type, right: this.parseComparison() };
+                }
+                return node;
+            }
+
+            parseComparison() {
+                let node = this.parseTerm();
+                let op;
+                while ((op = this.match(TokenType.Lt) || this.match(TokenType.Gt) || this.match(TokenType.Le) || this.match(TokenType.Ge))) {
+                    node = { type: 'Binary', left: node, op: op.type, right: this.parseTerm() };
+                }
+                return node;
+            }
+
+            parseTerm() {
+                let node = this.parseFactor();
+                let op;
+                while ((op = this.match(TokenType.Plus) || this.match(TokenType.Minus))) {
+                    node = { type: 'Binary', left: node, op: op.type, right: this.parseFactor() };
+                }
+                return node;
+            }
+
+            parseFactor() {
+                let node = this.parsePrimary();
+                let op;
+                while ((op = this.match(TokenType.Mul) || this.match(TokenType.Div) || this.match(TokenType.Mod))) {
+                    node = { type: 'Binary', left: node, op: op.type, right: this.parsePrimary() };
+                }
+                return node;
+            }
+
+            parsePrimary() {
+                const tok = this.peek();
+                if (!tok) throw new Error("Beklenmeyen kod sonu");
+
+                if (this.match(TokenType.Dogru)) return { type: 'Literal', val: true };
+                if (this.match(TokenType.Yanlis)) return { type: 'Literal', val: false };
+                if (this.match(TokenType.Bos)) return { type: 'Literal', val: null };
+                
+                if (tok.type === TokenType.Number) {
+                    return { type: 'Literal', val: parseFloat(this.next().val) };
+                }
+                if (tok.type === TokenType.String) {
+                    return { type: 'Literal', val: this.next().val };
+                }
+
+                if (tok.type === TokenType.Identifier) {
+                    this.next();
+                    // Call check
+                    if (this.match(TokenType.LParen)) {
+                        const args = [];
+                        if (this.peek() && this.peek().type !== TokenType.RParen) {
+                            args.push(this.parseExpr());
+                            while (this.match(TokenType.Comma)) {
+                                args.push(this.parseExpr());
+                            }
+                        }
+                        this.expect(TokenType.RParen, "')' bekleniyordu");
+                        return { type: 'Call', name: tok.val, args };
+                    }
+                    return { type: 'Identifier', val: tok.val };
+                }
+
+                if (this.match(TokenType.LParen)) {
+                    const node = this.parseExpr();
+                    this.expect(TokenType.RParen, "')' bekleniyordu");
+                    return node;
+                }
+
+                throw new Error(`Sözdizimi hatası: Beklenmeyen token '${tok.val}'`);
+            }
+        }
+
+        // 4.5 Interpreter
+        class Env {
+            constructor(parent = null) {
+                this.bindings = new Map();
+                this.parent = parent;
+            }
+
+            get(name) {
+                if (this.bindings.has(name)) return this.bindings.get(name);
+                if (this.parent) return this.parent.get(name);
+                return undefined;
+            }
+
+            set(name, val) {
+                if (this.updateInParent(name, val)) return;
+                this.bindings.set(name, val);
+            }
+
+            updateInParent(name, val) {
+                if (this.bindings.has(name)) {
+                    this.bindings.set(name, val);
+                    return true;
+                }
+                if (this.parent) return this.parent.updateInParent(name, val);
+                return false;
+            }
+        }
+
+        class Interpreter {
+            constructor(stdoutCallback) {
+                this.stdout = stdoutCallback;
+                this.env = new Env();
+                
+                // Set native builtin print function
+                this.env.bindings.set('yazdır', {
+                    type: 'Builtin',
+                    call: (args) => {
+                        this.stdout(args.map(a => {
+                            if (a === null) return 'boş';
+                            if (a === true) return 'doğru';
+                            if (a === false) return 'yanlış';
+                            return a.toString();
+                        }).join(' '));
+                        return null;
+                    }
+                });
+            }
+
+            run(stmts) {
+                for (let stmt of stmts) {
+                    const res = this.evalStmt(stmt, this.env);
+                    if (res && res.returned) {
+                        return res.val;
+                    }
+                }
+                return null;
+            }
+
+            evalExpr(expr, env) {
+                switch (expr.type) {
+                    case 'Literal':
+                        return expr.val;
+                    case 'Identifier':
+                        const val = env.get(expr.val);
+                        if (val === undefined) throw new Error(`Tanımlanamayan değişken '${expr.val}'`);
+                        return val;
+                    case 'Binary':
+                        const left = this.evalExpr(expr.left, env);
+                        const right = this.evalExpr(expr.right, env);
+                        switch (expr.op) {
+                            case 'Plus': return left + right;
+                            case 'Minus': return left - right;
+                            case 'Mul': return left * right;
+                            case 'Div': 
+                                if (right === 0) throw new Error("Sıfıra bölme hatası");
+                                return left / right;
+                            case 'Mod': return left % right;
+                            case 'Eq': return left === right;
+                            case 'Ne': return left !== right;
+                            case 'Lt': return left < right;
+                            case 'Gt': return left > right;
+                            case 'Le': return left <= right;
+                            case 'Ge': return left >= right;
+                            case 'And': return left && right;
+                            case 'Or': return left || right;
+                            default: throw new Error(`Bilinmeyen operatör '${expr.op}'`);
+                        }
+                    case 'Call':
+                        const func = env.get(expr.name);
+                        if (!func) throw new Error(`Tanımlanamayan işlev '${expr.name}'`);
+                        
+                        const args = expr.args.map(a => this.evalExpr(a, env));
+                        if (func.type === 'Builtin') {
+                            return func.call(args);
+                        } else if (func.type === 'Function') {
+                            if (func.params.length !== args.length) {
+                                throw new Error(`HATA: '${expr.name}' işlevi ${func.params.length} argüman bekliyor fakat ${args.length} verildi`);
+                            }
+                            const childEnv = new Env(env);
+                            for (let i = 0; i < func.params.length; i++) {
+                                childEnv.bindings.set(func.params[i], args[i]);
+                            }
+                            const res = this.evalBlock(func.body, childEnv);
+                            return res ? res.val : null;
+                        }
+                        throw new Error(`'${expr.name}' çağrılabilir bir değer değil`);
+                }
+            }
+
+            evalStmt(stmt, env) {
+                switch (stmt.type) {
+                    case 'VarDecl':
+                        const v = this.evalExpr(stmt.val, env);
+                        env.set(stmt.name, v);
+                        return null;
+                    case 'ExprStmt':
+                        this.evalExpr(stmt.expr, env);
+                        return null;
+                    case 'If':
+                        const cond = this.evalExpr(stmt.cond, env);
+                        if (cond === true) {
+                            return this.evalBlock(stmt.thenBlock, env);
+                        } else if (stmt.elseBlock) {
+                            return this.evalBlock(stmt.elseBlock, env);
+                        }
+                        return null;
+                    case 'While':
+                        while (this.evalExpr(stmt.cond, env) === true) {
+                            const res = this.evalBlock(stmt.body, env);
+                            if (res && res.returned) return res;
+                        }
+                        return null;
+                    case 'For':
+                        const start = this.evalExpr(stmt.start, env);
+                        const end = this.evalExpr(stmt.end, env);
+                        if (typeof start !== 'number' || typeof end !== 'number') {
+                            throw new Error("Döngü aralık sınırları sayı olmalıdır");
+                        }
+                        
+                        let i = start;
+                        while (stmt.stepDir === 'Artarak' ? i <= end : i >= end) {
+                            const childEnv = new Env(env);
+                            childEnv.bindings.set(stmt.var, i);
+                            
+                            const res = this.evalBlock(stmt.body, childEnv);
+                            if (res && res.returned) return res;
+
+                            if (stmt.stepDir === 'Artarak') i++;
+                            else i--;
+                        }
+                        return null;
+                    case 'FnDecl':
+                        env.bindings.set(stmt.name, {
+                            type: 'Function',
+                            params: stmt.params,
+                            body: stmt.body
+                        });
+                        return null;
+                    case 'Return':
+                        const retVal = stmt.expr ? this.evalExpr(stmt.expr, env) : null;
+                        return { returned: true, val: retVal };
+                }
+            }
+
+            evalBlock(body, env) {
+                const childEnv = new Env(env);
+                for (let stmt of body) {
+                    const res = this.evalStmt(stmt, childEnv);
+                    if (res && res.returned) return res;
+                }
+                return null;
+            }
+        }
+
+        // --- 5. EXECUTION & BUTTON LISTENERS ---
+        const runBtn = document.getElementById('runBtn');
+        const consoleOutput = document.getElementById('consoleOutput');
+        const astOutput = document.getElementById('astOutput');
+        const tokenOutput = document.getElementById('tokenOutput');
+
+        runBtn.addEventListener('click', () => {
+            consoleOutput.innerHTML = '';
+            const code = codeEditor.value;
+
+            try {
+                // 1. Tokenize
+                const tokens = tokenize(code);
+                
+                // Show Tokens visually
+                tokenOutput.innerHTML = tokens.map(t => `
+                    <tr>
+                        <td style="color: var(--color-primary);">${t.type}</td>
+                        <td>${t.val}</td>
+                    </tr>
+                `).join('');
+
+                // 2. Parse
+                const parser = new Parser(tokens);
+                const ast = parser.parse();
+
+                // Show AST visually
+                astOutput.innerHTML = JSON.stringify(ast, null, 4);
+
+                // 3. Interpret / Run
+                const interpreter = new Interpreter((txt) => {
+                    const logSpan = document.createElement('span');
+                    logSpan.className = 'console-log';
+                    logSpan.textContent = txt + '\n';
+                    consoleOutput.appendChild(logSpan);
+                });
+
+                interpreter.run(ast);
+
+                if (consoleOutput.innerHTML === '') {
+                    consoleOutput.innerHTML = '<span style="color: var(--text-muted);">Program çalıştırıldı, herhangi bir çıktı vermedi.</span>';
+                }
+
+            } catch (err) {
+                const errSpan = document.createElement('span');
+                errSpan.className = 'console-error';
+                errSpan.textContent = err.message;
+                consoleOutput.appendChild(errSpan);
+            }
+        });
+    </script>
+</body>
+</html>

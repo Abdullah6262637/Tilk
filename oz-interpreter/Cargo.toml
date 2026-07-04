@@ -1,0 +1,10 @@
+[package]
+name = "oz-interpreter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+oz-parser = { path = "../oz-parser" }
+oz-lexer = { path = "../oz-lexer" }
+logos.workspace = true
+

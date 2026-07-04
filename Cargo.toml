@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = [
+    "oz-lexer",
+    "oz-parser",
+    "oz-cli",
+    "oz-interpreter",
+    "oz-vm"
+]
+
+[workspace.dependencies]
+logos = "0.14"
+chumsky = "0.9.3"
+clap = { version = "4.4", features = ["derive"] }
+ariadne = "0.3.0"

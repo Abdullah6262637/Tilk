@@ -1,0 +1,4 @@
+[paket]
+ad = "ornek_proje"
+surum = "0.1.0"
+giris = "kaynak/ana.oz"

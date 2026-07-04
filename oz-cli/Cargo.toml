@@ -1,0 +1,17 @@
+[package]
+name = "oz-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap.workspace = true
+logos.workspace = true
+oz-lexer = { path = "../oz-lexer" }
+oz-parser = { path = "../oz-parser" }
+oz-interpreter = { path = "../oz-interpreter" }
+oz-vm = { path = "../oz-vm" }
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+
+

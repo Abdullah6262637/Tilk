@@ -1,0 +1,1 @@
+yazdır("Merhaba Dünya!");

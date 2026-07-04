@@ -1,0 +1,10 @@
+[package]
+name = "oz-parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chumsky.workspace = true
+logos.workspace = true
+oz-lexer = { path = "../oz-lexer" }
+
