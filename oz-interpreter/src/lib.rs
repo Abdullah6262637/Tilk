@@ -172,6 +172,51 @@ pub fn create_global_env() -> Env {
             Val::Hata(msg)
         })),
     );
+    // Built-in function "dosya_oku"
+    env.set(
+        "dosya_oku".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::String(path) = &args[0] {
+                    match std::fs::read_to_string(path) {
+                        Ok(content) => return Val::String(content),
+                        Err(e) => return Val::Hata(format!("Dosya okunamadı: {}", e)),
+                    }
+                }
+            }
+            Val::Hata("Geçersiz argüman: dosya_oku(yol)".to_string())
+        })),
+    );
+    // Built-in function "dosya_yaz"
+    env.set(
+        "dosya_yaz".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 2 {
+                if let (Val::String(path), Val::String(content)) = (&args[0], &args[1]) {
+                    match std::fs::write(path, content) {
+                        Ok(_) => return Val::Boolean(true),
+                        Err(e) => return Val::Hata(format!("Dosya yazılamadı: {}", e)),
+                    }
+                }
+            }
+            Val::Hata("Geçersiz argüman: dosya_yaz(yol, içerik)".to_string())
+        })),
+    );
+    // Built-in function "dosya_sil"
+    env.set(
+        "dosya_sil".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::String(path) = &args[0] {
+                    match std::fs::remove_file(path) {
+                        Ok(_) => return Val::Boolean(true),
+                        Err(e) => return Val::Hata(format!("Dosya silinemedi: {}", e)),
+                    }
+                }
+            }
+            Val::Hata("Geçersiz argüman: dosya_sil(yol)".to_string())
+        })),
+    );
     env
 }
 
@@ -548,6 +593,49 @@ mod tests {
         let (_, env) = res.unwrap();
         assert_eq!(env.get("sonuc_basarili"), Some(Val::Number(100.0)));
         assert_eq!(env.get("sonuc_hatali"), Some(Val::Number(500.0)));
+    }
+
+    #[test]
+    fn test_dosya_io() {
+        let src = r#"
+            işlev test_dosya() {
+                yazildi = dosya_yaz("test_cikti.txt", "Tilk Dosya Sistemi");
+                hata_icerik = "ok";
+                icerik = dosya_oku("test_cikti.txt") hata_ise {
+                    hata_icerik = "hata";
+                };
+                silindi = dosya_sil("test_cikti.txt");
+                hata_var = "ok";
+                hata_mesaji_var = "";
+                temp = dosya_oku("olmayan_dosya.txt") hata_ise {
+                    hata_var = "yakalandi";
+                    hata_mesaji_var = hata_mesajı;
+                };
+                döndür [yazildi, icerik, silindi, hata_var, hata_icerik, hata_mesaji_var];
+            }
+            sonuclar = test_dosya();
+            yazildi_res = sonuclar[0];
+            icerik_res = sonuclar[1];
+            silindi_res = sonuclar[2];
+            hata_res = sonuclar[3];
+            hata_icerik_res = sonuclar[4];
+            hata_mesaji_res = sonuclar[5];
+        "#;
+        let res = run_src(src);
+        assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+        let (_, env) = res.unwrap();
+        assert_eq!(env.get("yazildi_res"), Some(Val::Boolean(true)));
+        assert_eq!(env.get("icerik_res"), Some(Val::String("Tilk Dosya Sistemi".to_string())));
+        assert_eq!(env.get("silindi_res"), Some(Val::Boolean(true)));
+        assert_eq!(env.get("hata_res"), Some(Val::String("yakalandi".to_string())));
+        assert_eq!(env.get("hata_icerik_res"), Some(Val::String("ok".to_string())));
+        
+        let msg = env.get("hata_mesaji_res").unwrap();
+        if let Val::String(s) = msg {
+            assert!(s.contains("okunamadı") || s.contains("okunamadi") || s.contains("bulunamadı") || s.contains("bulunamadi"));
+        } else {
+            panic!("Hata mesajı string olmalı!");
+        }
     }
 }
 

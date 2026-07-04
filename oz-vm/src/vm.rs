@@ -23,6 +23,9 @@ impl VM {
         globals.insert("boyut".to_string(), Val::Builtin("boyut".to_string()));
         globals.insert("ekle".to_string(), Val::Builtin("ekle".to_string()));
         globals.insert("hata_fırlat".to_string(), Val::Builtin("hata_fırlat".to_string()));
+        globals.insert("dosya_oku".to_string(), Val::Builtin("dosya_oku".to_string()));
+        globals.insert("dosya_yaz".to_string(), Val::Builtin("dosya_yaz".to_string()));
+        globals.insert("dosya_sil".to_string(), Val::Builtin("dosya_sil".to_string()));
 
         VM {
             instructions,
@@ -279,6 +282,46 @@ impl VM {
                                     self.stack.push(Val::Hata(msg));
                                 } else {
                                     self.stack.push(Val::Hata("Bilinmeyen hata".to_string()));
+                                }
+                            } else if name == "dosya_oku" {
+                                if *arg_count != 1 {
+                                    return Err("HATA: dosya_oku() tek bir parametre alır".to_string());
+                                }
+                                let arg = self.stack.pop().ok_or("HATA: Yığın boş (dosya_oku)")?;
+                                if let Val::String(path) = arg {
+                                    match std::fs::read_to_string(path) {
+                                        Ok(content) => self.stack.push(Val::String(content)),
+                                        Err(e) => self.stack.push(Val::Hata(format!("Dosya okunamadı: {}", e))),
+                                    }
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: dosya_oku(yol)".to_string()));
+                                }
+                            } else if name == "dosya_yaz" {
+                                if *arg_count != 2 {
+                                    return Err("HATA: dosya_yaz() iki parametre alır".to_string());
+                                }
+                                let content_val = self.stack.pop().ok_or("HATA: Yığın boş (dosya_yaz content)")?;
+                                let path_val = self.stack.pop().ok_or("HATA: Yığın boş (dosya_yaz path)")?;
+                                if let (Val::String(path), Val::String(content)) = (path_val, content_val) {
+                                    match std::fs::write(path, content) {
+                                        Ok(_) => self.stack.push(Val::Boolean(true)),
+                                        Err(e) => self.stack.push(Val::Hata(format!("Dosya yazılamadı: {}", e))),
+                                    }
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: dosya_yaz(yol, içerik)".to_string()));
+                                }
+                            } else if name == "dosya_sil" {
+                                if *arg_count != 1 {
+                                    return Err("HATA: dosya_sil() tek bir parametre alır".to_string());
+                                }
+                                let arg = self.stack.pop().ok_or("HATA: Yığın boş (dosya_sil)")?;
+                                if let Val::String(path) = arg {
+                                    match std::fs::remove_file(path) {
+                                        Ok(_) => self.stack.push(Val::Boolean(true)),
+                                        Err(e) => self.stack.push(Val::Hata(format!("Dosya silinemedi: {}", e))),
+                                    }
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: dosya_sil(yol)".to_string()));
                                 }
                             } else {
                                 return Err(format!("HATA: Bilinmeyen dahili işlev '{}'", name));
