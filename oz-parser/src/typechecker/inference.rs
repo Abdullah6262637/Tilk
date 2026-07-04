@@ -111,8 +111,9 @@ impl TypeChecker {
                     }
                     if let Expr::Literal(Literal::String(path_str)) = &args[0].node {
                         let embedded_content = match path_str.as_str() {
+                            "std::sonuc" => Some("işlev basarili(deger) { r = {}; r[\"tur\"] = \"basarili\"; r[\"deger\"] = deger; döndür r; } işlev hata(mesaj) { r = {}; r[\"tur\"] = \"hata\"; r[\"hata\"] = mesaj; döndür r; }".to_string()),
                             "std::matematik" => Some("işlev karekok(x) { döndür kök(x); } işlev ust(taban, kuvvet) { döndür üs(taban, kuvvet); } işlev mutlak_deger(x) { döndür mutlak(x); }".to_string()),
-                            "std::dosya" => Some("işlev oku(yol) { döndür dosya_oku(yol); } işlev yaz(yol, icerik) { döndür dosya_yaz(yol, icerik); } işlev sil(yol) { döndür dosya_sil(yol); }".to_string()),
+                            "std::dosya" => Some("dahil_et(\"std::sonuc\"); işlev oku(yol) { döndür (basarili(dosya_oku(yol))) hata_ise { döndür hata(\"Okuma hatası\"); }; } işlev yaz(yol, icerik) { döndür (basarili(dosya_yaz(yol, icerik))) hata_ise { döndür hata(\"Yazma hatası\"); }; } işlev sil(yol) { döndür (basarili(dosya_sil(yol))) hata_ise { döndür hata(\"Silme hatası\"); }; }".to_string()),
                             "std::zaman" => Some("işlev simdi() { döndür şimdi(); } işlev bekle(ms) { döndür uyku(ms); }".to_string()),
                             _ => None,
                         };

@@ -398,3 +398,30 @@ fn test_zarf_fiil_kontrol_akisi() {
     assert_eq!(env.get("toplam"), Some(Val::Number(10.0)));
     assert_eq!(env.get("durum_kontrol"), Some(Val::Boolean(true)));
 }
+
+#[test]
+fn test_dosya_sonuc_hata_yonetimi() {
+    let src = r#"
+        dahil_et("std::dosya");
+        
+        okuma_sonucu = oku("olmayan_dosya.txt");
+        hata_durumu = okuma_sonucu["tur"];
+        hata_mesaji = okuma_sonucu["hata"];
+        
+        yazma_sonucu = yaz("gecici_test.txt", "Tilk Test");
+        yazma_durumu = yazma_sonucu["tur"];
+        yazma_degeri = yazma_sonucu["deger"];
+        
+        silme_sonucu = sil("gecici_test.txt");
+        silme_durumu = silme_sonucu["tur"];
+    "#;
+    let res = run_src(src);
+    assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+    let (_, env) = res.unwrap();
+    assert_eq!(env.get("hata_durumu"), Some(Val::String("hata".to_string())));
+    assert_eq!(env.get("hata_mesaji"), Some(Val::String("Okuma hatası".to_string())));
+    assert_eq!(env.get("yazma_durumu"), Some(Val::String("basarili".to_string())));
+    assert_eq!(env.get("yazma_degeri"), Some(Val::Bos));
+    assert_eq!(env.get("silme_durumu"), Some(Val::String("basarili".to_string())));
+}
+

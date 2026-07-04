@@ -441,3 +441,30 @@ fn test_zarf_fiil_kontrol_akisi() {
     assert_eq!(vm.get_global("toplam"), Some(Val::Number(10.0)));
     assert_eq!(vm.get_global("durum_kontrol"), Some(Val::Boolean(true)));
 }
+
+#[test]
+fn test_dosya_sonuc_hata_yonetimi() {
+    let src = r#"
+        dahil_et("std::dosya");
+        
+        okuma_sonucu = oku("olmayan_dosya.txt");
+        hata_durumu = okuma_sonucu["tur"];
+        hata_mesaji = okuma_sonucu["hata"];
+        
+        yazma_sonucu = yaz("gecici_test_vm.txt", "Tilk Test VM");
+        yazma_durumu = yazma_sonucu["tur"];
+        yazma_degeri = yazma_sonucu["deger"];
+        
+        silme_sonucu = sil("gecici_test_vm.txt");
+        silme_durumu = silme_sonucu["tur"];
+    "#;
+    let res = run_bytecode(src);
+    assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+    let (_, vm) = res.unwrap();
+    assert_eq!(vm.get_global("hata_durumu"), Some(Val::String("hata".to_string())));
+    assert_eq!(vm.get_global("hata_mesaji"), Some(Val::String("Okuma hatası".to_string())));
+    assert_eq!(vm.get_global("yazma_durumu"), Some(Val::String("basarili".to_string())));
+    assert_eq!(vm.get_global("yazma_degeri"), Some(Val::Bos));
+    assert_eq!(vm.get_global("silme_durumu"), Some(Val::String("basarili".to_string())));
+}
+
