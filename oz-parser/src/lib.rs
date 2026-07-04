@@ -227,7 +227,9 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
         // koşul ise { ... } değilse { ... }
         let if_stmt = expr
             .clone()
-            .then_ignore(suffix_parser(&["ise", "se"]))
+            .then_ignore(suffix_parser(&[
+                "ise", "se", "olunca", "olünce", "ince", "ınca", "unca", "ünce",
+            ]))
             .then(block.clone())
             .then(just(Token::Degilse).ignore_then(block.clone()).or_not())
             .map(|((cond, then_block), else_block)| Statement::If(cond, then_block, else_block))
@@ -236,7 +238,15 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
         // koşul iken { ... }
         let while_stmt = expr
             .clone()
-            .then_ignore(suffix_parser(&["iken"]))
+            .then_ignore(suffix_parser(&[
+                "iken",
+                "oldukça",
+                "oldukcça",
+                "dıkça",
+                "dikçe",
+                "dukça",
+                "dükçe",
+            ]))
             .then(block.clone())
             .map(|(cond, body)| Statement::While(cond, body))
             .map_with_span(Spanned::new);

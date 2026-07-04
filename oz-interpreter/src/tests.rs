@@ -373,3 +373,28 @@ fn test_harita_iyelik_erisim() {
     assert_eq!(env.get("ogrenci_adi"), Some(Val::String("Ali".to_string())));
     assert_eq!(env.get("ogrenci_yasi"), Some(Val::Number(20.0)));
 }
+
+#[test]
+fn test_zarf_fiil_kontrol_akisi() {
+    let src = r#"
+        sayac = 0;
+        toplam = 0;
+        
+        sayac < 5 oldukça {
+            toplam = toplam + sayac;
+            sayac = sayac + 1;
+        }
+
+        durum_kontrol = yanlış;
+        sayac == 5 olunca {
+            durum_kontrol = doğru;
+        } değilse {
+            durum_kontrol = yanlış;
+        }
+    "#;
+    let res = run_src(src);
+    assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+    let (_, env) = res.unwrap();
+    assert_eq!(env.get("toplam"), Some(Val::Number(10.0)));
+    assert_eq!(env.get("durum_kontrol"), Some(Val::Boolean(true)));
+}
