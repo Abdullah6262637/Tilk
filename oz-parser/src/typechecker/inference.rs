@@ -1,11 +1,14 @@
 use super::types::{Scheme, Type, TypeEnv};
 use crate::ast::{BinaryOp, Expr, Literal, Spanned, Statement, UnaryOp};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 
 pub struct TypeChecker {
     pub next_var: usize,
     pub substitutions: HashMap<usize, Type>,
     pub recorded_types: HashMap<String, Type>,
+    pub loaded_files: HashSet<PathBuf>,
+    pub loading_stack: Vec<PathBuf>,
 }
 
 impl TypeChecker {
@@ -15,6 +18,8 @@ impl TypeChecker {
             next_var: 0,
             substitutions: HashMap::new(),
             recorded_types: HashMap::new(),
+            loaded_files: HashSet::new(),
+            loading_stack: Vec::new(),
         }
     }
 
@@ -104,9 +109,30 @@ impl TypeChecker {
                     if args.is_empty() {
                         return Err("Tip Hatası: dahil_et en az bir argüman almalıdır".to_string());
                     }
-                    if let Expr::Literal(Literal::String(path)) = &args[0].node {
-                        let content = std::fs::read_to_string(path)
-                            .map_err(|e| format!("Modül yüklenemedi ({}): {}", path, e))?;
+                    if let Expr::Literal(Literal::String(path_str)) = &args[0].node {
+                        let path = std::path::Path::new(path_str);
+                        let canonical_path = std::fs::canonicalize(path).map_err(|e| {
+                            format!("Modül yolu çözümlenemedi ({}): {}", path_str, e)
+                        })?;
+
+                        // 1. Döngüsel Bağımlılık Kontrolü
+                        if self.loading_stack.contains(&canonical_path) {
+                            return Err(format!(
+                                "Tip Hatası: Döngüsel bağımlılık tespit edildi: {}",
+                                path_str
+                            ));
+                        }
+
+                        // 2. Çift Dahil Etme Kontrolü (Include Guard)
+                        if self.loaded_files.contains(&canonical_path) {
+                            return Ok(Type::Bos);
+                        }
+
+                        // Yükleme stack'ine ekle
+                        self.loading_stack.push(canonical_path.clone());
+
+                        let content = std::fs::read_to_string(&canonical_path)
+                            .map_err(|e| format!("Modül yüklenemedi ({}): {}", path_str, e))?;
 
                         use logos::Logos;
                         use oz_lexer::Token;
@@ -127,6 +153,11 @@ impl TypeChecker {
                         for stmt in &ast {
                             self.infer_stmt(stmt, env, current_ret_ty)?;
                         }
+
+                        // Yükleme tamamlandı, stack'ten çıkar ve loaded_files'a ekle
+                        self.loading_stack.pop();
+                        self.loaded_files.insert(canonical_path);
+
                         return Ok(Type::Bos);
                     } else {
                         return Err("Tip Hatası: dahil_et parametresi doğrudan metin (literal string) olmalıdır".to_string());

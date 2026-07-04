@@ -1,6 +1,7 @@
 use crate::instruction::{Instruction, Val};
 use oz_parser::ast::{BinaryOp, Expr, Literal, Spanned, Statement, StepDir, UnaryOp};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 enum VarRef {
@@ -12,6 +13,8 @@ pub struct Compiler {
     instructions: Vec<Instruction>,
     scopes: Vec<HashMap<String, u16>>,
     next_local: u16,
+    loaded_files: HashSet<PathBuf>,
+    loading_stack: Vec<PathBuf>,
 }
 
 impl Compiler {
@@ -20,6 +23,8 @@ impl Compiler {
             instructions: Vec::new(),
             scopes: Vec::new(),
             next_local: 0,
+            loaded_files: HashSet::new(),
+            loading_stack: Vec::new(),
         }
     }
 
@@ -133,9 +138,31 @@ impl Compiler {
                             "HATA: dahil_et tek bir dosya yolu parametresi almalıdır".to_string()
                         );
                     }
-                    if let Expr::Literal(Literal::String(path)) = &args[0].node {
-                        let content = std::fs::read_to_string(path)
-                            .map_err(|e| format!("Modül yüklenemedi ({}): {}", path, e))?;
+                    if let Expr::Literal(Literal::String(path_str)) = &args[0].node {
+                        let path = std::path::Path::new(path_str);
+                        let canonical_path = std::fs::canonicalize(path).map_err(|e| {
+                            format!("Modül yolu çözümlenemedi ({}): {}", path_str, e)
+                        })?;
+
+                        // 1. Döngüsel Bağımlılık Kontrolü
+                        if self.loading_stack.contains(&canonical_path) {
+                            return Err(format!(
+                                "HATA: Döngüsel bağımlılık tespit edildi: {}",
+                                path_str
+                            ));
+                        }
+
+                        // 2. Çift Dahil Etme Kontrolü (Include Guard)
+                        if self.loaded_files.contains(&canonical_path) {
+                            self.instructions.push(Instruction::Constant(Val::Bos));
+                            return Ok(());
+                        }
+
+                        // Yükleme stack'ine ekle
+                        self.loading_stack.push(canonical_path.clone());
+
+                        let content = std::fs::read_to_string(&canonical_path)
+                            .map_err(|e| format!("Modül yüklenemedi ({}): {}", path_str, e))?;
 
                         use logos::Logos;
                         use oz_lexer::Token;
@@ -156,6 +183,11 @@ impl Compiler {
                         for stmt in &ast {
                             self.compile_stmt(stmt)?;
                         }
+
+                        // Yükleme tamamlandı, stack'ten çıkar ve loaded_files'a ekle
+                        self.loading_stack.pop();
+                        self.loaded_files.insert(canonical_path);
+
                         self.instructions.push(Instruction::Constant(Val::Bos));
                         return Ok(());
                     } else {

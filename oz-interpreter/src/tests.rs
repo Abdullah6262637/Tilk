@@ -286,3 +286,56 @@ fn test_dahil_et() {
     assert_eq!(env.get("sonuc_islev"), Some(Val::Number(20.0)));
     assert_eq!(env.get("sonuc_sabit"), Some(Val::Number(42.0)));
 }
+
+#[test]
+fn test_dahil_et_cift_yukleme() {
+    use std::fs;
+    let module_content = r#"
+        sayac_mod = 1;
+    "#;
+    let module_path = "test_modul_cift.oz";
+    fs::write(module_path, module_content).unwrap();
+
+    // Aynı modülü iki kere yüklemek normalde hata vermemeli veya sayacı sıfırlamamalı
+    let src = r#"
+        dahil_et("test_modul_cift.oz");
+        dahil_et("test_modul_cift.oz");
+        sonuc_sayac = sayac_mod;
+    "#;
+    let res = run_src(src);
+    let _ = fs::remove_file(module_path);
+
+    assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+    let (_, env) = res.unwrap();
+    assert_eq!(env.get("sonuc_sayac"), Some(Val::Number(1.0)));
+}
+
+#[test]
+fn test_dahil_et_dongusel() {
+    use std::fs;
+    let mod_a_content = r#"
+        dahil_et("test_mod_b.oz");
+    "#;
+    let mod_b_content = r#"
+        dahil_et("test_mod_a.oz");
+    "#;
+
+    fs::write("test_mod_a.oz", mod_a_content).unwrap();
+    fs::write("test_mod_b.oz", mod_b_content).unwrap();
+
+    let src = r#"
+        dahil_et("test_mod_a.oz");
+    "#;
+    let res = run_src(src);
+
+    let _ = fs::remove_file("test_mod_a.oz");
+    let _ = fs::remove_file("test_mod_b.oz");
+
+    assert!(res.is_err(), "Döngüsel bağımlılık hata fırlatmalıydı!");
+    let err_msg = res.err().unwrap();
+    assert!(
+        err_msg.contains("Döngüsel bağımlılık"),
+        "Hata mesajı: {}",
+        err_msg
+    );
+}

@@ -85,6 +85,8 @@ impl PartialEq for Val {
 pub struct EnvInner {
     pub(crate) bindings: HashMap<String, Val>,
     pub(crate) parent: Option<Rc<RefCell<EnvInner>>>,
+    pub(crate) loaded_files: std::collections::HashSet<std::path::PathBuf>,
+    pub(crate) loading_stack: Vec<std::path::PathBuf>,
 }
 
 #[derive(Clone)]
@@ -95,6 +97,8 @@ impl Env {
         Env(Rc::new(RefCell::new(EnvInner {
             bindings: HashMap::new(),
             parent: None,
+            loaded_files: std::collections::HashSet::new(),
+            loading_stack: Vec::new(),
         })))
     }
 
@@ -102,7 +106,52 @@ impl Env {
         Env(Rc::new(RefCell::new(EnvInner {
             bindings: HashMap::new(),
             parent: Some(parent.0.clone()),
+            loaded_files: std::collections::HashSet::new(),
+            loading_stack: Vec::new(),
         })))
+    }
+
+    pub fn get_root_inner(&self) -> Rc<RefCell<EnvInner>> {
+        let mut curr = self.0.clone();
+        loop {
+            let parent = {
+                let borrowed = curr.borrow();
+                borrowed.parent.clone()
+            };
+            if let Some(p) = parent {
+                curr = p;
+            } else {
+                break;
+            }
+        }
+        curr
+    }
+
+    pub fn is_loading(&self, path: &std::path::Path) -> bool {
+        let root = self.get_root_inner();
+        let res = root.borrow().loading_stack.contains(&path.to_path_buf());
+        res
+    }
+
+    pub fn is_loaded(&self, path: &std::path::Path) -> bool {
+        let root = self.get_root_inner();
+        let res = root.borrow().loaded_files.contains(path);
+        res
+    }
+
+    pub fn push_loading(&self, path: std::path::PathBuf) {
+        let root = self.get_root_inner();
+        root.borrow_mut().loading_stack.push(path);
+    }
+
+    pub fn pop_loading(&self) {
+        let root = self.get_root_inner();
+        root.borrow_mut().loading_stack.pop();
+    }
+
+    pub fn mark_loaded(&self, path: std::path::PathBuf) {
+        let root = self.get_root_inner();
+        root.borrow_mut().loaded_files.insert(path);
     }
 
     pub fn get(&self, name: &str) -> Option<Val> {

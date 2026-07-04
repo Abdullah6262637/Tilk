@@ -333,3 +333,49 @@ fn test_golden_ornekler() {
         "../tests/golden/ornek5_karma.stdout",
     );
 }
+
+#[test]
+fn test_dahil_et_cift_yukleme() {
+    use std::fs;
+    let module_content = r#"
+        sayac_mod = 1;
+    "#;
+    let module_path = "test_modul_cift_vm.oz";
+    fs::write(module_path, module_content).unwrap();
+
+    let src = r#"
+        dahil_et("test_modul_cift_vm.oz");
+        dahil_et("test_modul_cift_vm.oz");
+        sonuc_sayac = sayac_mod;
+    "#;
+    let res = run_bytecode(src);
+    let _ = fs::remove_file(module_path);
+
+    assert!(res.is_ok(), "Hata: {:?}", res.as_ref().err());
+    let (_, vm) = res.unwrap();
+    assert_eq!(vm.get_global("sonuc_sayac"), Some(Val::Number(1.0)));
+}
+
+#[test]
+fn test_dahil_et_dongusel() {
+    use std::fs;
+    let mod_a_content = r#"
+        dahil_et("test_mod_a_vm.oz");
+    "#;
+    fs::write("test_mod_a_vm.oz", mod_a_content).unwrap();
+
+    let src = r#"
+        dahil_et("test_mod_a_vm.oz");
+    "#;
+    let res = run_bytecode(src);
+
+    let _ = fs::remove_file("test_mod_a_vm.oz");
+
+    assert!(res.is_err(), "Döngüsel bağımlılık hata fırlatmalıydı!");
+    let err_msg = res.err().unwrap();
+    assert!(
+        err_msg.contains("Döngüsel bağımlılık"),
+        "Hata mesajı: {}",
+        err_msg
+    );
+}

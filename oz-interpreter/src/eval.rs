@@ -105,9 +105,29 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
                     );
                 }
                 let path_val = eval_expr(&args[0], env)?;
-                if let Val::String(path) = path_val {
-                    let content = std::fs::read_to_string(&path)
-                        .map_err(|e| format!("Modül yüklenemedi ({}): {}", path, e))?;
+                if let Val::String(path_str) = path_val {
+                    let path = std::path::Path::new(&path_str);
+                    let canonical_path = std::fs::canonicalize(path)
+                        .map_err(|e| format!("Modül yolu çözümlenemedi ({}): {}", path_str, e))?;
+
+                    // 1. Döngüsel Bağımlılık Kontrolü
+                    if env.is_loading(&canonical_path) {
+                        return Err(format!(
+                            "HATA: Döngüsel bağımlılık tespit edildi: {}",
+                            path_str
+                        ));
+                    }
+
+                    // 2. Çift Dahil Etme Kontrolü (Include Guard)
+                    if env.is_loaded(&canonical_path) {
+                        return Ok(Val::Bos);
+                    }
+
+                    // Yükleme stack'ine ekle
+                    env.push_loading(canonical_path.clone());
+
+                    let content = std::fs::read_to_string(&canonical_path)
+                        .map_err(|e| format!("Modül yüklenemedi ({}): {}", path_str, e))?;
 
                     use logos::Logos;
                     use oz_lexer::Token;
@@ -124,6 +144,11 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
                         .map_err(|e| format!("Ayrıştırma hatası: {:?}", e))?;
 
                     let _ = eval_program(&ast, env)?;
+
+                    // Yükleme tamamlandı, stack'ten çıkar ve loaded_files'a ekle
+                    env.pop_loading();
+                    env.mark_loaded(canonical_path);
+
                     return Ok(Val::Bos);
                 } else {
                     return Err("HATA: dahil_et parametresi metin (string) olmalıdır".to_string());
