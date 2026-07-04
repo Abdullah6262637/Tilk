@@ -1,118 +1,71 @@
-﻿# TİLK Programlama Dili: Hiper-Detaylı Teknik Kılavuz ve Belgelendirme 🚀
+# TİLK Programlama Dili: Kapsamlı Teknik El Kitabı ve Belgelendirme 🚀
 
-TİLK (`.oz`), Türkçenin sondan eklemeli (aglutinative) dilbilgisi yapısını ve kelime türetme mantığını doğrudan kontrol mekanizması olarak kullanan, başka hiçbir programlama dilinin doğrudan kelime çevirisi olmayan, yüksek performanslı ve modern bir sistem/uygulama programlama dilidir.
-
-Bu belge; dilin tasarım felsefesinden, sözdizimi (syntax) kurallarına, derleyici arka uç (compiler backend) mimarisinden sanal makine (VM) yığın yönetimine kadar her detayını derinlemesine açıklayan hiper-detaylı teknik kılavuzdur.
+TİLK (`.oz`), Türkçenin sondan eklemeli (aglutinative) dilbilimsel çekirdeğini ve kelime türetme mantığını doğrudan kontrol yapıları olarak kullanan, yüksek performanslı ve modern bir sistem/uygulama programlama dilidir. Başka hiçbir dilin doğrudan kelime çevirisi olmayıp, özgün bir dil tasarımı felsefesine dayanır.
 
 ---
 
-## BÖLÜM 1: DİL TASARIM FELSEFESİ VE DİLBİLİMSEL ÇEKİRDEK
+## 📌 İÇİNDEKİLER
 
-### 1.1 "Kelime Çevirisi" Yaklaşımının Reddi
-Bugüne kadar geliştirilen Türkçe programlama dili denemelerinin (örneğin TPD, Karamel vb.) neredeyse tamamı, mevcut İngilizce tabanlı dillerin (C/C++, Java, Python, JavaScript) anahtar kelimelerinin Türkçe kelimelerle yer değiştirilmesinden ibarettir:
-- İngilizce: `if (x > 5) { return true; }`
-- Sahte Türkçe: `eğer (x > 5) { döndür doğru; }`
+1. [Dil Tasarım Felsefesi](#1-dil-tasarim-felsefesi)
+2. [EBNF Sözdizimi Şeması](#2-ebnf-sozdizimi-semasi)
+3. [Derleme ve Yürütme Mimarisi (Pipeline)](#3-derleme-ve-yurutme-mimarisi-pipeline)
+4. [Sanal Makine (VM) ve Performans Optimizasyonları](#4-sanal-makine-vm-ve-performans-optimizasyonlari)
+5. [Span-Tabanlı Görsel Hata Teşhis Sistemi (Ariadne)](#5-span-tabanli-gorsel-hata-teshis-sistemi-ariadne)
+6. [CLI Araç Zinciri ve Paket Yönetimi](#6-cli-arac-zinciri-ve-paket-yonetimi)
+7. [Örnek Uygulamalar Kataloğu](#7-ornek-uygulamalar-katalogu)
+8. [Kapsamlı Kullanım Kılavuzu İndeksi (30 Adet Belge)](#8-kapsamli-kullanim-kilavuzu-indeksi)
+9. [Gelecek Yol Haritası (500x Ölçeklendirme)](#9-gelecek-yol-haritasi)
 
-Bu yaklaşım, dilin sadece "sözcük düzeyinde yerelleştirilmesi" (localization) egzersizidir. Türkçenin doğal düşünce yapısı ve dilbilgisi kuralları bu sözdiziminde hayat bulamaz; cümle kurgusu hala İngilizce (SVO - Özne, Yüklem, Nesne) olarak kalır.
+---
 
-TİLK, bu kısıtlamayı aşmak amacıyla **sondan eklemeli dilbilgisi kurallarını ve hal eklerini** dilin kontrol yapılarının kendisi haline getirmiştir.
+## 1. DİL TASARIM FELSEFESİ
 
-### 1.2 Türkçe Ek Kurgusu ve Tümce Yapısı
-Türkçe, sondan eklemeli bir dildir. Bir kök kelimeye getirilen ekler, kelimenin zamanını, yönünü, kipini ve işlevini belirler. TİLK, bu mantığı aşağıdaki kurallarla programlama dünyasına aktarır:
+TİLK, sözcük düzeyinde bir Türkçe çeviri ("TPD" veya "Karamel" gibi sahte yerelleştirmeler) değildir. Dilin kontrol yapıları ve tümce kurgusu, Türkçenin sondan eklemeli yapısına sadık kalınarak oluşturulmuştur.
 
-#### 1. Koşul Yapısı (`-ise / -se`)
-Türkçede şart kipi `-ise` veya `-se` ekiyle kurulur ("yağmur yağıyor **ise** şemsiye al", "sayı 5'ten büyük**se** yazdır"). TİLK'de bu kural birebir uygulanır:
+### 1.1 Koşullar (`-ise` / `-se`)
+Türkçedeki şart kipi doğrudan koşul bloklarını yönetir:
 ```oz
 sayı > 5 ise {
     yazdır("Sayı 5'ten büyüktür.");
 } değilse {
-    yazdır("Küçüktür.");
+    yazdır("Sayı 5 veya daha küçüktür.");
 }
 ```
 
-#### 2. Zarf-Fiil Döngü Yapısı (`-iken`)
-Bir eylemin devam ettiği süreyi belirtmek için kullanılan `-iken` zarf-fiil eki, TİLK'de koşullu döngüyü (`while`) oluşturur:
+### 1.2 Zarf-Fiil Döngüleri (`-iken`)
+Bir eylemin sürdüğü aralığı belirtmek için kullanılan `-iken` eki, koşullu döngüleri (`while`) kurar:
 ```oz
-sayaç <= 10 iken {
+sayaç <= 3 iken {
     yazdır(sayaç);
     sayaç = sayaç + 1;
 }
 ```
 
-#### 3. Yönelme ve Ayrılma Ekli Aralık Döngüleri (`-den ... -e dek`)
+### 1.3 Yönelme ve Ayrılma Ekli Aralık Döngüleri (`-den ... -e dek`)
 Sayaçlı döngüler (`for`) Türkçedeki yönelme (`-e / -a`) ve ayrılma (`-den / -dan`) ekleri ile `dek` edatı birleştirilerek kurgulanmıştır. Kesme işaretleri (`'`) lexer seviyesinde yoksayılır, böylece doğal yazım korunur:
 ```oz
-// 'den ve 'e ekleri ile aralık belirtilir
-i, 1'den 10'a dek artarak {
+i, 1'den 5'e dek artarak {
     yazdır(i);
 }
-
-// Azalan döngüler için 'azalarak' soneki kullanılır
-j, 10'dan 1'e dek azalarak {
-    yazdır(j);
-}
 ```
-
-#### 4. İşlev Tanımlamaları
-İşlevler (fonksiyonlar) `işlev` anahtar kelimesi ile tanımlanır ve gövde bloğu içerisindeki kodları yürütür:
-```oz
-işlev topla(a, b) {
-    döndür a + b;
-}
-```
-
-### 1.3 Unicode Normalizasyonu ve "Türkçe I/İ" Problemi
-Derleyicilerin en sık karşılaştığı kararlılık sorunlarından biri Unicode karakterlerin büyük/küçük harf dönüşümüdür. Türkçe karakter setindeki noktalı `İ` harfinin küçüğü `i`, noktasız `I` harfinin küçüğü ise `ı` karakteridir. Standart Unicode kütüphaneleri (örneğin ASCII tabanlı alt yapılar) `İ` karakterini küçük harfe çevirdiğinde noktasız `i` yapamaz veya hata üretir. Bu da değişken karşılaştırmalarında kararsızlıklara yol açar.
-
-TİLK derleyicisi, locale-independent (yerel ayarlardan bağımsız) özel bir normalizasyon fonksiyonu (`turkish_lowercase`) barındırır:
-```rust
-pub fn turkish_lowercase(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            'İ' => result.push('i'),
-            'I' => result.push('ı'),
-            _ => {
-                for lc in c.to_lowercase() {
-                    result.push(lc);
-                }
-            }
-        }
-    }
-    result
-}
-```
-Bu fonksiyon, işletim sistemi dili veya terminal kodlaması ne olursa olsun, tüm TİLK derleyicilerinin ve sanal makinelerinin değişken isimlerini tam olarak aynı şekilde hashlemesini ve eşleştirmesini garanti altına alır.
 
 ---
 
-## BÖLÜM 2: RESMÎ DİL SÖZDİZİMİ (EBNF GRAMMAR SPECIFICATION)
+## 2. EBNF SÖZDİZİMİ ŞEMASI
 
-TİLK dilinin resmî EBNF (Extended Backus-Naur Form) sözdizimi tanımlaması aşağıdaki gibidir:
+TİLK dilinin resmî EBNF dilbilgisi kuralları:
 
 ```ebnf
 Program         ::= Statement*
-
-Statement       ::= VarDecl
-                  | Assignment
-                  | IfStatement
-                  | WhileStatement
-                  | ForStatement
-                  | FnDeclaration
-                  | ReturnStatement
-                  | ExprStatement
-
+Statement       ::= VarDecl | Assignment | IfStatement | WhileStatement | ForStatement | FnDeclaration | ReturnStatement | ExprStatement
 VarDecl         ::= Identifier "=" Expr ";"
 Assignment      ::= Identifier "=" Expr ";"
 ReturnStatement ::= "döndür" Expr? ";"
-
 IfStatement     ::= Expr ("ise" | "se") Block ( "değilse" Block )?
 WhileStatement  ::= Expr "iken" Block
 ForStatement    ::= Identifier "," Expr ("dan" | "den" | "tan" | "ten") Expr ("e" | "a" | "ye" | "ya") "dek" ("artarak" | "azalarak")? Block
-
 FnDeclaration   ::= "işlev" Identifier "(" ParamList? ")" Block
 Block           ::= "{" Statement* "}"
-
 Expr            ::= LogicalOrExpr
 LogicalOrExpr   ::= LogicalAndExpr ( "veya" LogicalAndExpr )*
 LogicalAndExpr  ::= EqualityExpr ( "ve" EqualityExpr )*
@@ -120,198 +73,67 @@ EqualityExpr    ::= ComparisonExpr ( ( "==" | "!=" ) ComparisonExpr )*
 ComparisonExpr  ::= Term ( ( "<" | ">" | "<=" | ">=" ) Term )*
 Term            ::= Factor ( ( "+" | "-" ) Factor )*
 Factor          ::= Primary ( ( "*" | "/" | "%" ) Primary )*
-
-Primary         ::= Identifier
-                  | Number
-                  | String
-                  | Boolean
-                  | "boş"
-                  | CallExpr
-                  | "(" Expr ")"
-
+Primary         ::= Identifier | Number | String | Boolean | "boş" | CallExpr | "(" Expr ")"
 CallExpr        ::= Identifier "(" ArgList? ")"
-
-ParamList       ::= Identifier ( "," Identifier )*
-ArgList         ::= Expr ( "," Expr )*
-
-Boolean         ::= "doğru" | "yanlış"
-Number          ::= [0-9]+ ( "." [0-9]+ )?
-String          ::= '"' [^"\\]* '"'
-Identifier      ::= [a-zA-ZçğıişöüÇĞIİŞÖÜ_] [a-zA-Z0-9çğıişöüÇĞIİŞÖÜ_]*
 ```
 
 ---
 
-## BÖLÜM 3: DERLEYİCİ ARKA UÇ VE ÇALIŞTIRMA MİMARİSİ
+## 3. DERLEME VE YÜRÜTME MİMARİSİ (PIPELINE)
 
-TİLK, kodun analiz edilmesinden çalıştırılmasına kadar 5 aşamalı bir boru hattı (pipeline) kullanır:
+TİLK, klasik bir derleyici boru hattını (compiler pipeline) takip eder:
 
-```
-[Kaynak Kod (.oz)] -> (Lexer) -> [Token Listesi] -> (Parser) -> [AST] -> (Compiler) -> [Bytecode] -> (VM) -> [Çalıştırma]
-```
-
-### 3.1 Lexer (`oz-lexer` Modülü)
-Sözcüksel analiz aşaması, Rust ekosisteminin en hızlı derleme zamanı DFA (Deterministic Finite Automaton) üreteci olan `logos` kütüphanesini kullanır.
-
-#### Sonek Kesme İşareti (`'`) Yoksayma Stratejisi
-Türkçedeki ekler kelimelere kesme işaretiyle bağlanır (`10'a`, `5'ten`, `limit'e`). Bu durumun lexer seviyesinde karmaşıklığa yol açmaması için kesme işareti boşluk karakterleri ile birlikte **yoksayılan karakterler (skip)** sınıfına dahil edilmiştir:
-```rust
-#[logos(skip r"[ \t\n\f']+")]
-```
-Bu sayede:
-- `10'a` girdisi lexer tarafından ardışık iki bağımsız token olarak okunur: `Token::Number("10")` ve `Token::Identifier("a")`.
-- `5'ten` girdisi `Token::Number("5")` ve `Token::Identifier("ten")` olarak okunur.
-Bu yaklaşım hem dilin sözdizimini parser seviyesinde aşırı basitleştirir hem de kullanıcının doğal Türkçe imla kurallarıyla kod yazmasına olanak tanır.
-
-### 3.2 Parser (`oz-parser` Modülü)
-TİLK parser'ı, güçlü bir parser kombinatörü olan `chumsky` kütüphanesini kullanır. Chumsky, sözdizimi hatalarında durmak yerine hatayı izole edip parse işlemine devam edebilen (error recovery) PEG-benzeri bir altyapı sunar.
-
-#### Soneklerin Dinamik Çözümlenmesi (Contextual Suffixes)
-Çakışmaları önlemek için dilbilgisi ekleri (`ise`, `iken`, `dan/den`, `a/e/ya/ye`, `artarak`, `azalarak`) lexer seviyesinde katı anahtar kelimeler (keywords) olarak tanımlanmamıştır. Eğer bu kelimeler token seviyesinde kilitlenseydi, geliştirici `a`, `e` veya `se` isimli bir değişken tanımlayamazdı (`a = 15;` yazıldığında lexer `a` karakterini `Token::AE` olarak algılar ve derleme hatası verirdi).
-
-Bu sorunu çözmek için sonekler parser seviyesinde **dinamik tanımlayıcı filtrelemesi** ile çözümlenir:
-```rust
-fn suffix_parser(values: &'static [&'static str]) -> impl Parser<Token, String, Error = Simple<Token>> + Clone {
-    ident_parser().try_map(move |s, span| {
-        if values.contains(&s.as_str()) {
-            Ok(s)
-        } else {
-            Err(Simple::custom(span, "Beklenen ek bulunamadı"))
-        }
-    })
-}
-```
-Bu sayede:
-- `a = 15;` satırındaki `a`, standart bir tanımlayıcı (`Identifier`) olarak çözümlenir.
-- `i, 1'den 10'a dek` döngüsündeki `a` (kesme işareti atılınca `a` olarak kalan yönelme eki), `suffix_parser(&["a", "e", "ya", "ye"])` filtresine girerek döngünün yönelme eki olarak kabul edilir.
+1. **Sözcüksel Analiz (Lexer)**: `oz-lexer` modülü, Rust'ın en hızlı DFA lexer üreteci olan `logos` kütüphanesini kullanır. Türkçe harflerin büyük-küçük uyuşmazlığı (`İ`/`i`, `I`/`ı`) yerel ayarlardan bağımsız `turkish_lowercase` fonksiyonu ve `unicode-normalization` (NFC) ile normalize edilir.
+2. **Ayrıştırıcı (Parser)**: `oz-parser` modülü, güçlü bir parser kombinatörü olan `chumsky` kütüphanesini kullanır.
+3. **Tip Denetimi (Typechecker)**: Hindley-Milner tip çıkarım sistemi ile dildeki tiplerin uyuşup uyuşmadığı derleme anında doğrulanır.
+4. **Bayt Kodu Oluşturucu (Compiler)**: AST'yi doğrusal VM talimatlarına derler.
+5. **Sanal Makine (VM)**: `oz-vm` modülü, bayt kodlarını yüksek hızlı bir yığın makinesinde yürütür.
 
 ---
 
-## BÖLÜM 4: BAYT KODU DERLEYİCİSİ VE YIĞIN TABANLI SANAL MAKİNE (VM)
+## 4. SANAL MAKİNE (VM) VE OPTİMİZASYONLAR
 
-TİLK, Faz 4 itibarıyla AST'yi doğrusal talimatlara derleyip bunları kendi yığın tabanlı Sanal Makinesinde (VM) çalıştıracak şekilde optimize edilmiştir.
+### 4.1 Slot-Index Tabanlı Lokal Değişken Yönetimi
+Yerel değişkenlerin HashMap'te string anahtarla aranıp yavaş çalışması yerine, derleyici düzeyinde her yerel değişken bir `u16` indeks değerine çözümlenir. VM Frame yapısı güncellenerek `locals: HashMap` yerine `slots: Vec<Val>` O(1) tabanlı vektöre geçilmiştir.
 
-### 4.1 VM Talimat Kümesi (Instruction Set)
-Sanal makine, aşağıdaki minimal ve optimize edilmiş opkodları (Opcode) işler:
+### 4.2 Kısa Devre (Short-Circuit) Tasarımı
+Mantıksal `ve` ile `veya` operatörleri için VM'e `JumpIfFalseKeep` ve `JumpIfTrueKeep` opkodları eklenmiştir. Sol tarafın durumuna göre sağ tarafın değerlendirilmesi tamamen atlanarak performans korunur.
 
-```rust
-pub enum Instruction {
-    Constant(Val),     // Yığına sabit değer yükler (Sayı, Metin, Boolean, Boş)
-    Load(String),      // Belirtilen değişkenin değerini yığına yükler (local/global)
-    Store(String),     // Yığının tepesindeki değeri değişkene kaydeder
-    Pop,               // Yığının tepesindeki değeri atar
-    Add, Sub, Mul, Div, Mod, // Aritmetik işlemler
-    Eq, Ne, Lt, Gt, Le, Ge,  // Karşılaştırma işlemleri
-    And, Or,           // Mantıksal işlemler
-    Jump(usize),       // Program sayacını (IP) doğrudan hedef adrese taşır
-    JumpIfFalse(usize),// Yığının tepesindeki değer yanlış (false) ise hedefe dallanır
-    Call(usize),       // Yığındaki argüman sayısı ile fonksiyonu çağırır
-    Return,            // Fonksiyon çağrısından geri döner
-}
-```
-
-### 4.2 Yığın ve Çerçeve (Stack & Call Frame) Yönetimi
-VM, her fonksiyon çağrısı için yeni bir yürütme çerçevesi (`Frame`) oluşturur. Bu çerçeveler çağrı yığınında (call stack) tutulur:
-
-```rust
-struct Frame {
-    return_address: usize,          // Fonksiyon bittiğinde dönülecek program sayacı (IP)
-    locals: HashMap<String, Val>,  // Fonksiyon içi lokal değişken tablosu
-}
-```
-
-#### Fonksiyon Çağrı Algoritması:
-1. `Call(arg_count)` talimatı geldiğinde:
-   - Yığından çağrılacak işlev (`Val::Function`) pop edilir.
-   - Yığından sırasıyla argümanlar pop edilerek yeni oluşturulan çerçevenin `locals` haritasına parametre adlarıyla eşleştirilerek yazılır.
-   - Mevcut `ip` (Instruction Pointer) adresi `return_address` olarak kaydedilerek yeni çerçeve `frames` yığınına push edilir.
-   - `ip` değeri fonksiyonun giriş adresi olan `entry_ip`'ye setlenir.
-2. `Return` talimatı geldiğinde:
-   - Yığının tepesindeki dönüş değeri pop edilir.
-   - Aktif çerçeve `frames` yığınından pop edilerek kaldırılır.
-   - `ip` program sayacı, çerçevenin `return_address` değerine geri döndürülür.
-   - Dönüş değeri tekrar yığına push edilir.
+### 4.3 Kaçış Karakterleri Desteği
+Metinlerde (String literals) kullanılan `\n` (satır atlama), `\t` (sekme), `\r` (satır başı), `\"` (çift tırnak) ve `\\` (ters eğik çizgi) kaçış dizilimleri lexer aşamasında çözülür.
 
 ---
 
-## BÖLÜM 5: PAKET YÖNETİCİSİ VE CLI KULLANIMI
+## 5. SPAN-TABANLI GÖRSEL HATA TEŞHİS SİSTEMİ (ARIADNE)
 
-`oz-cli` aracı, TİLK ekosisteminin resmi derleme, test ve paket yönetim aracıdır.
+AST düğümlerinin tamamı, kaynak kodundaki karakter koordinatlarını belirten `Span` bilgisiyle sarmalanır. Derleme veya ayrıştırma hatası alındığında `ariadne` yardımıyla hata görselleştirilir:
 
-### 5.1 Proje Manifestosu (`tilk.toml`)
-Her TİLK projesinin kök dizininde projenin meta verilerini tutan bir `tilk.toml` dosyası bulunur:
-```toml
-[paket]
-ad = "hesaplama_modulu"
-surum = "0.1.0"
-giris = "kaynak/ana.oz"
 ```
-
-### 5.2 CLI Komut Referansı
-
-#### 1. Yeni Proje Oluşturma (`yeni`)
-Belirtilen isimde şablon bir TİLK projesi ve klasör yapısı oluşturur:
-```bash
-cargo run --bin oz-cli -- yeni <proje_adı>
-```
-**Oluşan Yapı:**
-```
-proje_adı/
-├── tilk.toml
-├── kaynak/
-│   └── ana.oz
-└── testler/
-    └── test_ana.oz
-```
-
-#### 2. Proje Derleme (`derle`)
-`tilk.toml` içindeki `giris` dosyasını baz alarak tüm projeyi derler ve olası sözdizimi hatalarını raporlar:
-```bash
-cargo run --bin oz-cli -- derle
-```
-
-#### 3. Proje Çalıştırma (`calistir`)
-Projeyi varsayılan olarak bayt kodu derleyicisi ile derleyip Sanal Makine (VM) üzerinde yürütür. Eğer parametre verilirse doğrudan tek bir dosyayı çalıştırır:
-```bash
-# Projeyi tilk.toml üzerinden çalıştırır
-cargo run --bin oz-cli -- calistir
-
-# Belirli bir dosyayı doğrudan çalıştırır
-cargo run --bin oz-cli -- calistir <dosya_yolu.oz>
-```
-
-#### 4. Entegrasyon Testlerini Koşturma (`test`)
-`testler/` dizini altındaki tüm `.oz` uzantılı test dosyalarını tarar, VM üzerinde çalıştırır ve testlerin geçip geçmediğini raporlar:
-```bash
-cargo run --bin oz-cli -- test
+Error: Sayı bekleniyordu
+   ╭─[test.oz:1:13]
+   │
+ 1 │ sayı = 5 + * 4 ;
+   │             ┬  
+   │             ╰── Dosya sonu
+───╯
 ```
 
 ---
 
-## BÖLÜM 6: ZENGİN GÖRSEL WEB PLAYGROUND
+## 6. CLI ARAÇ ZINCİRİ VE PAKET YÖNETİMİ
 
-TİLK dili, herhangi bir derleyici kurulumu gerektirmeden doğrudan web tarayıcısında çalışabilen istemci taraflı (client-side) bir **Oyun Alanına (Playground)** sahiptir.
+`oz-cli`, TİLK ekosisteminin resmi komut satırı aracıdır.
 
-### 6.1 Tasarım Dili ve Temel Bileşenler
-Playground, modern web tasarım trendlerine uygun olarak **koyu tema ve cammorfizmi (glassmorphism)** temel alarak tasarlanmıştır:
-- **Renk Paleti:** Gece siyahı arka plan (`#0a0c10`), neon turkuaz (`#00e5ff`) ve neon turuncu (`#ff5722`) vurgular.
-- **Yazı Tipleri:** Başlıklar ve metinler için premium `Outfit`, kod alanları için ise `Fira Code` monospace yazı tipi kullanılmıştır.
-- **Dinamik Satır Numaraları:** Kod yazıldıkça otomatik güncellenen satır numarası sütunu.
-
-### 6.2 Tarayıcı İçi Yorumlama Motoru
-Playground, Rust derleyicimiz ile %100 uyumlu çalışan saf bir **JavaScript Lexer, Parser ve Interpreter** omurgası barındırır. Bu sayede tarayıcıda yazılan kod hiçbir sunucu çağrısı (backend API request) yapmadan anında istemci tarafında derlenip çalıştırılır.
-
-#### Sunulan Görsel Paneller:
-1. **Konsol Çıktısı (Console):** Kodun ürettiği standart çıktıları (`yazdır`) ve olası çalışma zamanı hatalarını anlık gösterir.
-2. **AST Görselleştirici:** Kodun derleyici tarafından oluşturulan Soyut Sözdizimi Ağacı (AST) yapısını canlı olarak JSON formatında gösterir. Geliştiricinin dilin derleme mantığını anlamasını kolaylaştırır.
-3. **Token Akış Tablosu:** Lexer aşamasında kodun hangi kelimelere (tokens) ayrıştırıldığını gösteren dinamik analiz tablosu.
+- `yeni <ad>`: Yeni bir TİLK projesi şablonu oluşturur.
+- `derle`: Manifest dosyasını (`tilk.toml`) baz alarak tüm projeyi derler.
+- `calistir [dosya]`: Projeyi veya belirli bir `.oz` dosyasını VM üzerinde çalıştırır.
+- `test`: `testler/` dizini altındaki tüm dosyaları tarayıp koşturur.
 
 ---
 
-## BÖLÜM 7: KAPSAMLI ÖRNEK PROGRAMLAR
+## 7. ÖRNEK UYGULAMALAR KATALOĞU
 
-### 7.1 Özyinelemeli (Recursive) Faktöriyel Hesaplama
-Dildeki fonksiyon tanımlama, koşul yapıları, return deyimleri ve rekürsif çağrı mekanizmasını doğrular:
+### 7.1 Özyinelemeli Faktöriyel
 ```oz
 işlev faktöriyel(n) {
     n <= 1 ise {
@@ -320,55 +142,65 @@ işlev faktöriyel(n) {
     döndür n * faktöriyel(n - 1);
 }
 
-limit = 5;
-i, 1'den limit'e dek artarak {
-    yazdır(faktöriyel(i));
-}
+yazdır(faktöriyel(5)); // 120
 ```
 
-### 7.2 Sayaçlı ve Koşullu Döngülerin Birlikte Kullanımı
-Döngüler, zarf-fiiller ve aritmetik operasyonların doğruluğunu test eder:
+### 7.2 Hata Yakalama ve Aritmetik
 ```oz
-sayaç = 1;
-sayaç <= 3 iken {
-    yazdır("sayaç değeri:", sayaç);
-    sayaç = sayaç + 1;
+işlev güvenli_böl(a, b) {
+    b == 0 ise {
+        hata_fırlat("Sıfıra bölme yapılamaz!");
+    }
+    döndür a / b;
 }
 
-i, 1'den 5'e dek artarak {
-    yazdır("döngü i:", i);
-}
-```
-
-### 7.3 Karmaşık Mantıksal ve Aritmetik İşlemler
-Operatör önceliklerini (precedence) ve mantıksal VE/VEYA işlemlerinin doğruluğunu test eder:
-```oz
-a = 15;
-b = 4;
-toplam = a + b;
-kalan = a % b;
-
-doğru veya yanlış ve doğru ise {
-    yazdır("Aritmetik Sonuçlar:");
-    yazdır("Toplam:", toplam);
-    yazdır("Modül Kalanı:", kalan);
-}
+sonuç = güvenli_böl(10, 0) hata_ise {
+    yazdır("Hata oluştu:", hata_mesajı);
+    döndür 0;
+};
 ```
 
 ---
 
-## BÖLÜM 8: GELECEK YOL HARİTASI VE 500x ÖLÇEKLENDİRME PLANI
+## 8. KAPSAMLI KULLANIM KILAVUZU İNDEKSİ
 
-TİLK dilinin bir eğitim prototipinden, endüstriyel standartlarda bir genel amaçlı yazılım diline dönüşmesi için planlanan 500 kat büyüme stratejisi:
+Tilk dili hakkında her ayrıntıyı teker teker açıklayan 30 adet detaylı kılavuz belgesi [kullanim_kilavuzu/](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu) dizini altında yer almaktadır:
 
-### 8.1 Güçlü Statik Tip Sistemi (Tip Çıkarımı)
-- **Hindley-Milner Algoritması:** Geliştiricinin tip yazmasına gerek kalmadan derleme zamanında katı tip denetimi yapılması.
-- **Koleksiyon Sonekleri:** Türkçe iyelik ekleriyle dizi erişimleri (örn. `dizi'nin 1'inci elemanı`).
+1. [01_giris_ve_tasarim.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/01_giris_ve_tasarim.md): Dilin dilbilimsel çekirdeği ve tasarım felsefesi.
+2. [02_sozdizimi_kurallari.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/02_sozdizimi_kurallari.md): Dilbilgisinin EBNF spesifikasyonları.
+3. [03_degiskenler_ve_tipler.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/03_degiskenler_ve_tipler.md): Dinamik tipler ve değişken atamaları.
+4. [04_kosul_yapilari.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/04_kosul_yapilari.md): `ise`, `se` ve `değilse` koşul blokları.
+5. [05_donguler.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/05_donguler.md): `iken` ve `-den ... -e dek` döngü yapıları.
+6. [06_islevler_ve_recursion.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/06_islevler_ve_recursion.md): Fonksiyon tanımlama ve özyineleme mantığı.
+7. [07_diziler_ve_haritalar.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/07_diziler_ve_haritalar.md): Diziler, haritalar ve mutasyon işlemleri.
+8. [08_hata_yonetimi_hata_ise.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/08_hata_yonetimi_hata_ise.md): Hata fırlatma ve `hata_ise` ile yakalama.
+9. [09_asenkron_tamamlaninca.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/09_asenkron_tamamlaninca.md): Görevler ve asenkron programlama.
+10. [10_dosya_io_islemleri.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/10_dosya_io_islemleri.md): Dosya sistemi okuma, yazma ve silme yardımcıları.
+11. [11_zaman_ve_uyku.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/11_zaman_ve_uyku.md): `şimdi` ve thread duraklatan `uyku` fonksiyonu.
+12. [12_matematik_fonksiyonlari.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/12_matematik_fonksiyonlari.md): `kök`, `üs` ve `mutlak` gibi yerleşik matematik araçları.
+13. [13_lexer_ve_tokenlar.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/13_lexer_ve_tokenlar.md): logos lexer mimarisi ve token skip kuralları.
+14. [14_parser_ve_ast.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/14_parser_ve_ast.md): Chumsky parser mimarisi ve AST span tasarımı.
+15. [15_tip_kontrol_sistemi.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/15_tip_kontrol_sistemi.md): HM tip çıkarımı ve unification.
+16. [16_derleyici_ve_bytecode.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/16_derleyici_ve_bytecode.md): AST'den bayt koduna derleme aşaması.
+17. [17_sanal_makine_vm_mimarisi.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/17_sanal_makine_vm_mimarisi.md): Yığın makinesi, call frame ve execution döngüsü.
+18. [18_slot_index_duzenleme.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/18_slot_index_duzenleme.md): HashMap yerine O(1) slot vektör optimizasyonu.
+19. [19_short_circuit_mantigi.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/19_short_circuit_mantigi.md): Mantıksal operatörlerde kısa devre tasarımı.
+20. [20_escape_dizileri.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/20_escape_dizileri.md): Metinlerde kaçış karakterleri desteği.
+21. [21_ariadne_ve_hata_teshisi.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/21_ariadne_ve_hata_teshisi.md): Görsel, konum işaretçili hata raporlama sistemi.
+22. [22_golden_file_testler.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/22_golden_file_testler.md): Golden stdout tabanlı entegrasyon test harness'ı.
+23. [23_cicd_pipeline.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/23_cicd_pipeline.md): GitHub Actions test, clippy ve fmt otomasyonu.
+24. [24_c_codegen_makine_kodu.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/24_c_codegen_makine_kodu.md): Transpile ve yerel derleme altyapısı.
+25. [25_proje_manifestosu_tilk_toml.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/25_proje_manifestosu_tilk_toml.md): `tilk.toml` bildirim yapılandırması.
+26. [26_cli_arac_zinciri.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/26_cli_arac_zinciri.md): `oz-cli` araç setinin komutları ve kullanımı.
+27. [27_web_playground_arayuzu.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/27_web_playground_arayuzu.md): Web arayüzü ve tarayıcı içi yorumlama motoru.
+28. [28_unicode_ve_nfc_normalizasyonu.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/28_unicode_ve_nfc_normalizasyonu.md): Unicode normalizasyon ve Türkçe I/İ harf çözümleri.
+29. [29_gelecek_yol_haritasi.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/29_gelecek_yol_haritasi.md): Native derleyici ve 500x ölçeklendirme planı.
+30. [30_ornek_uygulamalar_katalogu.md](file:///c:/Users/HP/Desktop/Tilk/kullanim_kilavuzu/30_ornek_uygulamalar_katalogu.md): Dilde yazılmış zengin kod örnekleri.
 
-### 8.2 Performans Odaklı Derleme Arka Uçları
-- **Cranelift JIT:** Geliştirme modunda kodun anında makine koduna derlenerek gecikmesiz çalışması.
-- **LLVM (`inkwell`):** Üretim modunda native `.exe` veya WebAssembly çıktılarının yüksek optimizasyonla (O3) derlenmesi.
+---
 
-### 8.3 Geliştirici Ekosistemi (LSP & Paket Deposu)
-- **LSP (Language Server):** `tower-lsp` tabanlı dil sunucusu ile VS Code, JetBrains ve Neovim editörleri için anlık autocomplete ve syntax highlighting desteği.
-- **Çevrimiçi Paket Kaydı:** `crates.io` benzeri merkezi bir kütüphane havuzunun kurulması ve `oz-cli` üzerinden bağımlılıkların yönetilmesi.
+## 9. GELECEK YOL HARİTASI
+
+- **Cranelift/LLVM Arka Ucu**: Bayt kodu yorumlaması yerine doğrudan yerel makine kodu (native binary) üreten AOT/JIT derleyici altyapısı.
+- **Language Server Protocol (LSP)**: Tower-LSP tabanlı, VS Code ve benzeri editörlerde anlık hata gösterimi ve otomatik tamamlama.
+- **Gelişmiş Tip Sistemi**: Türkçe iyelik sonekleriyle tip eşleşmeleri ve generikler.
