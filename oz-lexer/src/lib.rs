@@ -2,7 +2,7 @@ use logos::Logos;
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Logos, Debug, Clone, PartialEq, Eq, Hash)]
-#[logos(skip r"[ \t\n\f']+|//[^\n]*")] // Skip whitespace, Turkish suffix apostrophes ('), and comments starting with //
+#[logos(skip r"[ \t\r\n\f']+|//[^\n]*")] // Skip whitespace, Turkish suffix apostrophes ('), and comments starting with //
 pub enum Token {
     // Core Keywords
     #[token("işlev")]
