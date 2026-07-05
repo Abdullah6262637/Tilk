@@ -80,6 +80,11 @@ pub enum Statement {
         step_dir: StepDir,
         body: Vec<Spanned<Statement>>,
     },
+    ForEach {
+        var: String,
+        iterable: Spanned<Expr>,
+        body: Vec<Spanned<Statement>>,
+    },
     FnDecl {
         name: String,
         generics: Vec<String>,

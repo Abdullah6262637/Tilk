@@ -56,6 +56,20 @@ impl VM {
         globals.insert("simdi".to_string(), Val::Builtin("şimdi".to_string()));
         globals.insert("uyku".to_string(), Val::Builtin("uyku".to_string()));
 
+        // Yeni eklenen fonksiyonlar
+        globals.insert("biçimle".to_string(), Val::Builtin("biçimle".to_string()));
+        globals.insert("uzunluk".to_string(), Val::Builtin("uzunluk".to_string()));
+        globals.insert("böl".to_string(), Val::Builtin("böl".to_string()));
+        globals.insert("birleştir".to_string(), Val::Builtin("birleştir".to_string()));
+        globals.insert("içerir".to_string(), Val::Builtin("içerir".to_string()));
+        globals.insert("büyük_harf".to_string(), Val::Builtin("büyük_harf".to_string()));
+        globals.insert("küçük_harf".to_string(), Val::Builtin("küçük_harf".to_string()));
+        globals.insert("kırp".to_string(), Val::Builtin("kırp".to_string()));
+        globals.insert("tamsayı".to_string(), Val::Builtin("tamsayı".to_string()));
+        globals.insert("metne_çevir".to_string(), Val::Builtin("metne_çevir".to_string()));
+        globals.insert("sayıya_çevir".to_string(), Val::Builtin("sayıya_çevir".to_string()));
+        globals.insert("rastgele".to_string(), Val::Builtin("rastgele".to_string()));
+
         VM {
             instructions,
             ip: 0,
@@ -360,6 +374,9 @@ impl VM {
                                     Val::Map(map) => {
                                         self.stack.push(Val::Number(map.borrow().len() as f64))
                                     }
+                                    Val::String(s) => {
+                                        self.stack.push(Val::Number(s.chars().count() as f64))
+                                    }
                                     _ => self.stack.push(Val::Number(0.0)),
                                 }
                             } else if name == "ekle" {
@@ -561,6 +578,121 @@ impl VM {
                                         "Geçersiz argüman: uyku(milisaniye)".to_string(),
                                     ));
                                 }
+                            } else if name == "biçimle" {
+                                if *arg_count < 1 {
+                                    return Err("HATA: biçimle() en az 1 parametre alır".to_string());
+                                }
+                                let mut call_args = Vec::new();
+                                for _ in 0..*arg_count {
+                                    call_args.push(self.stack.pop().ok_or("HATA: Yığın boş (biçimle args)")?);
+                                }
+                                call_args.reverse();
+                                if let Val::String(template) = &call_args[0] {
+                                    let mut result = String::new();
+                                    let mut arg_idx = 1;
+                                    let mut chars = template.chars().peekable();
+                                    while let Some(c) = chars.next() {
+                                        if c == '{' && chars.peek() == Some(&'}') {
+                                            chars.next(); // Consume '}'
+                                            if arg_idx < call_args.len() {
+                                                result.push_str(&format_val(&call_args[arg_idx]));
+                                                arg_idx += 1;
+                                            } else {
+                                                result.push_str("{}");
+                                            }
+                                        } else {
+                                            result.push(c);
+                                        }
+                                    }
+                                    self.stack.push(Val::String(result));
+                                } else {
+                                    self.stack.push(Val::Hata("İlk argüman metin olmalı".to_string()));
+                                }
+                            } else if name == "uzunluk" {
+                                if *arg_count != 1 {
+                                    return Err("HATA: uzunluk() tek bir parametre alır".to_string());
+                                }
+                                let arg = self.stack.pop().ok_or("HATA: Yığın boş (uzunluk)")?;
+                                if let Val::String(s) = arg {
+                                    self.stack.push(Val::Number(s.chars().count() as f64));
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: uzunluk(metin)".to_string()));
+                                }
+                            } else if name == "böl" {
+                                if *arg_count != 2 {
+                                    return Err("HATA: böl() iki parametre alır".to_string());
+                                }
+                                let ayırıcı = self.stack.pop().ok_or("HATA: Yığın boş (böl ayırıcı)")?;
+                                let metin = self.stack.pop().ok_or("HATA: Yığın boş (böl metin)")?;
+                                if let (Val::String(m), Val::String(a)) = (metin, ayırıcı) {
+                                    let parts: Vec<Val> = m.split(&a).map(|s| Val::String(s.to_string())).collect();
+                                    self.stack.push(Val::Array(Rc::new(RefCell::new(parts))));
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: böl(metin, ayraç)".to_string()));
+                                }
+                            } else if name == "birleştir" {
+                                if *arg_count != 2 {
+                                    return Err("HATA: birleştir() iki parametre alır".to_string());
+                                }
+                                let ayırıcı_val = self.stack.pop().ok_or("HATA: Yığın boş")?;
+                                let dizi_val = self.stack.pop().ok_or("HATA: Yığın boş")?;
+                                if let (Val::Array(arr), Val::String(ayirici)) = (dizi_val, ayırıcı_val) {
+                                    let strings: Vec<String> = arr.borrow().iter().map(format_val).collect();
+                                    self.stack.push(Val::String(strings.join(&ayirici)));
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: birleştir(dizi, ayraç)".to_string()));
+                                }
+                            } else if name == "içerir" {
+                                if *arg_count != 2 {
+                                    return Err("HATA: içerir() iki parametre alır".to_string());
+                                }
+                                let aranan = self.stack.pop().ok_or("HATA: Yığın boş")?;
+                                let metin = self.stack.pop().ok_or("HATA: Yığın boş")?;
+                                if let (Val::String(m), Val::String(a)) = (metin, aranan) {
+                                    self.stack.push(Val::Boolean(m.contains(&a)));
+                                } else {
+                                    self.stack.push(Val::Hata("Geçersiz argüman: içerir(metin, aranan)".to_string()));
+                                }
+                            } else if name == "büyük_harf" {
+                                if *arg_count != 1 { return Err("HATA: büyük_harf() 1 parametre alır".to_string()); }
+                                let arg = self.stack.pop().unwrap();
+                                if let Val::String(s) = arg { self.stack.push(Val::String(s.to_uppercase())); } else { self.stack.push(Val::Hata("Hata".into())); }
+                            } else if name == "küçük_harf" {
+                                if *arg_count != 1 { return Err("HATA: küçük_harf() 1 parametre alır".to_string()); }
+                                let arg = self.stack.pop().unwrap();
+                                if let Val::String(s) = arg { self.stack.push(Val::String(s.to_lowercase())); } else { self.stack.push(Val::Hata("Hata".into())); }
+                            } else if name == "kırp" {
+                                if *arg_count != 1 { return Err("HATA: kırp() 1 parametre alır".to_string()); }
+                                let arg = self.stack.pop().unwrap();
+                                if let Val::String(s) = arg { self.stack.push(Val::String(s.trim().to_string())); } else { self.stack.push(Val::Hata("Hata".into())); }
+                            } else if name == "tamsayı" {
+                                if *arg_count != 1 { return Err("HATA: tamsayı() 1 parametre alır".to_string()); }
+                                let arg = self.stack.pop().unwrap();
+                                if let Val::Number(n) = arg { self.stack.push(Val::Number(n.floor())); } else { self.stack.push(Val::Hata("Hata".into())); }
+                            } else if name == "metne_çevir" {
+                                if *arg_count != 1 { return Err("HATA: metne_çevir() 1 parametre alır".to_string()); }
+                                let arg = self.stack.pop().unwrap();
+                                self.stack.push(Val::String(format_val(&arg)));
+                            } else if name == "sayıya_çevir" {
+                                if *arg_count != 1 { return Err("HATA: sayıya_çevir() 1 parametre alır".to_string()); }
+                                let arg = self.stack.pop().unwrap();
+                                if let Val::String(s) = arg {
+                                    if let Ok(n) = s.parse::<f64>() { self.stack.push(Val::Number(n)); } else { self.stack.push(Val::Hata("Hata".into())); }
+                                } else { self.stack.push(Val::Hata("Hata".into())); }
+                            } else if name == "rastgele" {
+                                if *arg_count != 2 { return Err("HATA: rastgele(min, max) 2 parametre alır".to_string()); }
+                                let max_val = self.stack.pop().unwrap();
+                                let min_val = self.stack.pop().unwrap();
+                                if let (Val::Number(min), Val::Number(max)) = (min_val, max_val) {
+                                    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+                                    let range = max - min;
+                                    if range > 0.0 {
+                                        let rnd = (now % 10000) as f64 / 10000.0;
+                                        self.stack.push(Val::Number((min + (rnd * range)).floor()));
+                                    } else {
+                                        self.stack.push(Val::Number(min));
+                                    }
+                                } else { self.stack.push(Val::Hata("Hata".into())); }
                             } else {
                                 return Err(format!("HATA: Bilinmeyen dahili işlev '{}'", name));
                             }
@@ -641,9 +773,20 @@ impl VM {
                                 self.stack.push(Val::Bos);
                             }
                         }
+                        Val::String(s) => match index_val {
+                            Val::Number(n) => {
+                                let idx = n as usize;
+                                if let Some(c) = s.chars().nth(idx) {
+                                    self.stack.push(Val::String(c.to_string()));
+                                } else {
+                                    return Err(format!("HATA: Metin sınırları dışında: indeks {}, boyut {}", idx, s.chars().count()));
+                                }
+                            }
+                            _ => return Err("HATA: Metin indeksi sayı olmalıdır".to_string()),
+                        },
                         _ => {
                             return Err(
-                                "HATA: Sadece diziler, haritalar ve kanallar indekslenebilir"
+                                "HATA: Sadece diziler, haritalar, kanallar ve metinler indekslenebilir"
                                     .to_string(),
                             )
                         }

@@ -295,6 +295,19 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
                 })
                 .map_with_span(Spanned::new);
 
+        // her eleman dizi içinde { ... }
+        let for_each_stmt = just(Token::Her)
+            .ignore_then(ident_parser())
+            .then(expr.clone())
+            .then_ignore(just(Token::Icinde))
+            .then(block.clone())
+            .map(|((var, iterable), body)| Statement::ForEach {
+                var,
+                iterable,
+                body,
+            })
+            .map_with_span(Spanned::new);
+
         // işlev topla(a, b) { ... }
         // işlev topla<T>(a: T, b: T): T { ... }
         let type_annot = just(Token::Colon)
@@ -362,6 +375,7 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
             .or(if_stmt)
             .or(while_stmt)
             .or(for_stmt)
+            .or(for_each_stmt)
             .or(fn_decl)
             .or(return_stmt)
             .or(tamamlaninca_stmt)

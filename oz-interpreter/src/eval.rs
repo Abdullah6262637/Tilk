@@ -598,6 +598,36 @@ pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, St
             }
             Ok(None)
         }
+        Statement::ForEach {
+            var,
+            iterable,
+            body,
+        } => {
+            let iter_val = eval_expr(iterable, env)?;
+            match iter_val {
+                Val::Array(arr) => {
+                    let items = arr.borrow().clone();
+                    for item in items {
+                        let child_env = Env::extend(env);
+                        child_env.set(var.clone(), item);
+                        if let Some(ret) = eval_program(body, &child_env)? {
+                            return Ok(Some(ret));
+                        }
+                    }
+                }
+                Val::String(s) => {
+                    for c in s.chars() {
+                        let child_env = Env::extend(env);
+                        child_env.set(var.clone(), Val::String(c.to_string()));
+                        if let Some(ret) = eval_program(body, &child_env)? {
+                            return Ok(Some(ret));
+                        }
+                    }
+                }
+                _ => return Err("HATA: For-Each döngüsü sadece diziler ve metinler üzerinde kullanılabilir".to_string()),
+            }
+            Ok(None)
+        }
         Statement::FnDecl {
             name,
             generics: _,

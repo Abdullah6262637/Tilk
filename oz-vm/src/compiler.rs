@@ -54,7 +54,19 @@ impl Compiler {
             | "şimdi"
             | "simdi"
             | "uyku"
-            | "kanal" => true,
+            | "kanal"
+            | "biçimle"
+            | "uzunluk"
+            | "böl"
+            | "birleştir"
+            | "içerir"
+            | "büyük_harf"
+            | "küçük_harf"
+            | "kırp"
+            | "tamsayı"
+            | "metne_çevir"
+            | "sayıya_çevir"
+            | "rastgele" => true,
             _ => {
                 let name_without_prefix = if name.contains("::") {
                     name.split("::").last().unwrap_or(name)
@@ -81,6 +93,18 @@ impl Compiler {
                         | "simdi"
                         | "uyku"
                         | "kanal"
+                        | "biçimle"
+                        | "uzunluk"
+                        | "böl"
+                        | "birleştir"
+                        | "içerir"
+                        | "büyük_harf"
+                        | "küçük_harf"
+                        | "kırp"
+                        | "tamsayı"
+                        | "metne_çevir"
+                        | "sayıya_çevir"
+                        | "rastgele"
                 )
             }
         };
@@ -521,6 +545,93 @@ impl Compiler {
                     VarRef::Global(slot) => self
                         .instructions
                         .push(Instruction::StoreGlobal(slot.clone())),
+                }
+
+                self.instructions.push(Instruction::Jump(loop_start));
+
+                let loop_end = self.instructions.len();
+                self.instructions[jump_end_idx] = Instruction::JumpIfFalse(loop_end);
+            }
+            Statement::ForEach {
+                var,
+                iterable,
+                body,
+            } => {
+                let uid = self.instructions.len();
+                let iter_name = format!("__iter_{}", uid);
+                let len_name = format!("__len_{}", uid);
+                let i_name = format!("__i_{}", uid);
+
+                self.compile_expr(iterable)?;
+                let iter_ref = self.declare_variable(&iter_name);
+                match &iter_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                }
+
+                match &iter_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                }
+                self.instructions.push(Instruction::LoadGlobal("boyut".to_string()));
+                self.instructions.push(Instruction::Call(1));
+                let len_ref = self.declare_variable(&len_name);
+                match &len_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                }
+
+                self.instructions.push(Instruction::Constant(Val::Number(0.0)));
+                let i_ref = self.declare_variable(&i_name);
+                match &i_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                }
+
+                let loop_start = self.instructions.len();
+
+                match &i_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                }
+                match &len_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                }
+                self.instructions.push(Instruction::Lt);
+
+                let jump_end_idx = self.instructions.len();
+                self.instructions.push(Instruction::JumpIfFalse(0));
+
+                match &iter_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                }
+                match &i_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                }
+                self.instructions.push(Instruction::Index);
+
+                let var_ref = self.declare_variable(var);
+                match &var_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                }
+
+                for s in body {
+                    self.compile_stmt(s)?;
+                }
+
+                match &i_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                }
+                self.instructions.push(Instruction::Constant(Val::Number(1.0)));
+                self.instructions.push(Instruction::Add);
+                match &i_ref {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
                 }
 
                 self.instructions.push(Instruction::Jump(loop_start));

@@ -33,6 +33,13 @@ pub enum Token {
     #[token("tamamlandığında")]
     Tamamlaninca,
 
+    #[token("her")]
+    Her,
+
+    #[token("içinde")]
+    #[token("icinde")]
+    Icinde,
+
     // Operators
     #[token("=")]
     Assign,

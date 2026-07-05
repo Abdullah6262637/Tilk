@@ -496,6 +496,39 @@ impl TypeChecker {
                     self.infer_stmt(s, &mut body_env, current_ret_ty)?;
                 }
             }
+            Statement::ForEach {
+                var,
+                iterable,
+                body,
+            } => {
+                let iterable_ty = self.infer_expr(iterable, env, current_ret_ty)?;
+                let resolved_iterable = self.resolve(&iterable_ty);
+
+                let item_ty = match resolved_iterable {
+                    Type::Array(inner) => *inner.clone(),
+                    Type::String => Type::String,
+                    Type::Var(_) => {
+                        let element_ty = self.new_var();
+                        self.unify(&iterable_ty, &Type::Array(Box::new(Type::Var(element_ty))))?;
+                        Type::Var(element_ty)
+                    }
+                    _ => {
+                        return Err("Tip Hatası: For-Each döngüsü sadece diziler ve metinler üzerinde kullanılabilir".to_string())
+                    }
+                };
+
+                let mut body_env = TypeEnv::extend(env);
+                body_env.set(
+                    var.clone(),
+                    Scheme {
+                        vars: vec![],
+                        ty: item_ty,
+                    },
+                );
+                for s in body {
+                    self.infer_stmt(s, &mut body_env, current_ret_ty)?;
+                }
+            }
             Statement::FnDecl {
                 name,
                 generics,

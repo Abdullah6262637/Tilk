@@ -25,6 +25,7 @@ impl LanguageServer for Backend {
                     ..Default::default()
                 }),
                 document_symbol_provider: Some(OneOf::Left(true)),
+                definition_provider: Some(OneOf::Left(true)),
                 ..ServerCapabilities::default()
             },
         })
@@ -232,6 +233,100 @@ impl LanguageServer for Backend {
         }
 
         Ok(Some(DocumentSymbolResponse::Nested(symbols)))
+    }
+
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+
+        let docs = self.documents.lock().unwrap();
+        let content = match docs.get(&uri) {
+            Some(c) => c,
+            None => return Ok(None),
+        };
+
+        let offset = position_to_offset(content, position);
+        let word = match get_word_at_offset(content, offset) {
+            Some(w) => w,
+            None => return Ok(None),
+        };
+
+        let lexer = oz_lexer::Token::lexer(content);
+        let mut tokens = Vec::new();
+        for (token_res, span) in lexer.spanned() {
+            if let Ok(token) = token_res {
+                tokens.push((token, span));
+            }
+        }
+
+        if let Ok(ast) = oz_parser::parse_tokens(tokens, content.len()) {
+            let mut def_span = None;
+            for stmt in &ast {
+                find_definition_in_stmt(stmt, word, &mut def_span);
+                if def_span.is_some() {
+                    break;
+                }
+            }
+            if let Some(span) = def_span {
+                let range = span_to_range(content, span);
+                return Ok(Some(GotoDefinitionResponse::Scalar(Location {
+                    uri,
+                    range,
+                })));
+            }
+        }
+
+        Ok(None)
+    }
+}
+
+fn find_definition_in_stmt(stmt: &oz_parser::ast::Spanned<oz_parser::ast::Statement>, target_name: &str, def_span: &mut Option<std::ops::Range<usize>>) {
+    use oz_parser::ast::Statement;
+    match &stmt.node {
+        Statement::VarDecl(name, _) => {
+            if name == target_name {
+                *def_span = Some(stmt.span.clone());
+            }
+        }
+        Statement::FnDecl { name, body, .. } => {
+            if name == target_name {
+                *def_span = Some(stmt.span.clone());
+            } else {
+                for s in body {
+                    find_definition_in_stmt(s, target_name, def_span);
+                }
+            }
+        }
+        Statement::If(_, then_block, else_block) => {
+            for s in then_block {
+                find_definition_in_stmt(s, target_name, def_span);
+            }
+            if let Some(eb) = else_block {
+                for s in eb {
+                    find_definition_in_stmt(s, target_name, def_span);
+                }
+            }
+        }
+        Statement::While(_, body) | Statement::For { body, .. } | Statement::ForEach { body, .. } => {
+            for s in body {
+                find_definition_in_stmt(s, target_name, def_span);
+            }
+        }
+        Statement::Assignment(name, _) => {
+            // Note: In an exact IDE this would trace back to the actual VarDecl,
+            // but for simplicity we'll just check if there's no other decl.
+        }
+        _ => {}
+    }
+}
+
+fn span_to_range(src: &str, span: std::ops::Range<usize>) -> tower_lsp::lsp_types::Range {
+    tower_lsp::lsp_types::Range {
+        start: offset_to_position(src, span.start),
+        end: offset_to_position(src, span.end),
     }
 }
 
