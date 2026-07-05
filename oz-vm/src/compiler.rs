@@ -589,37 +589,51 @@ impl Compiler {
                 let iter_ref = self.declare_variable(&iter_name);
                 match &iter_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
                 match &iter_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
-                self.instructions.push(Instruction::LoadGlobal("boyut".to_string()));
+                self.instructions
+                    .push(Instruction::LoadGlobal("boyut".to_string()));
                 self.instructions.push(Instruction::Call(1));
                 let len_ref = self.declare_variable(&len_name);
                 match &len_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
-                self.instructions.push(Instruction::Constant(Val::Number(0.0)));
+                self.instructions
+                    .push(Instruction::Constant(Val::Number(0.0)));
                 let i_ref = self.declare_variable(&i_name);
                 match &i_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
                 let loop_start = self.instructions.len();
 
                 match &i_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
                 match &len_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
                 self.instructions.push(Instruction::Lt);
 
@@ -628,18 +642,24 @@ impl Compiler {
 
                 match &iter_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
                 match &i_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
                 self.instructions.push(Instruction::Index);
 
                 let var_ref = self.declare_variable(var);
                 match &var_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
                 for s in body {
@@ -648,13 +668,18 @@ impl Compiler {
 
                 match &i_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::LoadLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::LoadGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::LoadGlobal(slot.clone())),
                 }
-                self.instructions.push(Instruction::Constant(Val::Number(1.0)));
+                self.instructions
+                    .push(Instruction::Constant(Val::Number(1.0)));
                 self.instructions.push(Instruction::Add);
                 match &i_ref {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(*slot)),
-                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot.clone())),
+                    VarRef::Global(slot) => self
+                        .instructions
+                        .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
                 self.instructions.push(Instruction::Jump(loop_start));

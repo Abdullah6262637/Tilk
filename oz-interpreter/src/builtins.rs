@@ -204,143 +204,223 @@ pub fn create_global_env() -> Env {
         match val {
             Val::Number(n) => n.to_string(),
             Val::String(s) => s.clone(),
-            Val::Boolean(b) => if *b { "doğru".to_string() } else { "yanlış".to_string() },
+            Val::Boolean(b) => {
+                if *b {
+                    "doğru".to_string()
+                } else {
+                    "yanlış".to_string()
+                }
+            }
             Val::Bos => "boş".to_string(),
             _ => format!("{:?}", val),
         }
     };
 
-    env.set("biçimle".to_string(), Val::Builtin(Rc::new(move |args| {
-        if args.len() < 1 { return Val::Hata("biçimle() en az 1 parametre alır".to_string()); }
-        if let Val::String(template) = &args[0] {
-            let mut result = String::new();
-            let mut arg_idx = 1;
-            let mut chars = template.chars().peekable();
-            while let Some(c) = chars.next() {
-                if c == '{' && chars.peek() == Some(&'}') {
-                    chars.next();
-                    if arg_idx < args.len() {
-                        result.push_str(&format_val_int(&args[arg_idx]));
-                        arg_idx += 1;
+    env.set(
+        "biçimle".to_string(),
+        Val::Builtin(Rc::new(move |args| {
+            if args.len() < 1 {
+                return Val::Hata("biçimle() en az 1 parametre alır".to_string());
+            }
+            if let Val::String(template) = &args[0] {
+                let mut result = String::new();
+                let mut arg_idx = 1;
+                let mut chars = template.chars().peekable();
+                while let Some(c) = chars.next() {
+                    if c == '{' && chars.peek() == Some(&'}') {
+                        chars.next();
+                        if arg_idx < args.len() {
+                            result.push_str(&format_val_int(&args[arg_idx]));
+                            arg_idx += 1;
+                        } else {
+                            result.push_str("{}");
+                        }
                     } else {
-                        result.push_str("{}");
+                        result.push(c);
                     }
-                } else {
-                    result.push(c);
+                }
+                return Val::String(result);
+            }
+            Val::Hata("İlk argüman metin olmalı".to_string())
+        })),
+    );
+
+    env.set(
+        "uzunluk".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::String(s) = &args[0] {
+                    return Val::Number(s.chars().count() as f64);
                 }
             }
-            return Val::String(result);
-        }
-        Val::Hata("İlk argüman metin olmalı".to_string())
-    })));
+            Val::Hata("Geçersiz argüman: uzunluk(metin)".to_string())
+        })),
+    );
 
-    env.set("uzunluk".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 1 {
-            if let Val::String(s) = &args[0] {
-                return Val::Number(s.chars().count() as f64);
+    env.set(
+        "böl".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 2 {
+                if let (Val::String(metin), Val::String(ayirici)) = (&args[0], &args[1]) {
+                    let parts: Vec<Val> = metin
+                        .split(ayirici)
+                        .map(|s| Val::String(s.to_string()))
+                        .collect();
+                    return Val::Array(Rc::new(RefCell::new(parts)));
+                }
             }
-        }
-        Val::Hata("Geçersiz argüman: uzunluk(metin)".to_string())
-    })));
+            Val::Hata("Geçersiz argüman: böl(metin, ayraç)".to_string())
+        })),
+    );
 
-    env.set("böl".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 2 {
-            if let (Val::String(metin), Val::String(ayirici)) = (&args[0], &args[1]) {
-                let parts: Vec<Val> = metin.split(ayirici).map(|s| Val::String(s.to_string())).collect();
-                return Val::Array(Rc::new(RefCell::new(parts)));
+    env.set(
+        "birleştir".to_string(),
+        Val::Builtin(Rc::new(move |args| {
+            if args.len() == 2 {
+                if let (Val::Array(arr), Val::String(ayirici)) = (&args[0], &args[1]) {
+                    let format_val_int_inner = |val: &Val| -> String {
+                        match val {
+                            Val::Number(n) => n.to_string(),
+                            Val::String(s) => s.clone(),
+                            Val::Boolean(b) => {
+                                if *b {
+                                    "doğru".to_string()
+                                } else {
+                                    "yanlış".to_string()
+                                }
+                            }
+                            Val::Bos => "boş".to_string(),
+                            _ => format!("{:?}", val),
+                        }
+                    };
+                    let strings: Vec<String> =
+                        arr.borrow().iter().map(format_val_int_inner).collect();
+                    return Val::String(strings.join(ayirici));
+                }
             }
-        }
-        Val::Hata("Geçersiz argüman: böl(metin, ayraç)".to_string())
-    })));
+            Val::Hata("Geçersiz argüman: birleştir(dizi, ayraç)".to_string())
+        })),
+    );
 
-    env.set("birleştir".to_string(), Val::Builtin(Rc::new(move |args| {
-        if args.len() == 2 {
-            if let (Val::Array(arr), Val::String(ayirici)) = (&args[0], &args[1]) {
+    env.set(
+        "içerir".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 2 {
+                if let (Val::String(metin), Val::String(aranan)) = (&args[0], &args[1]) {
+                    return Val::Boolean(metin.contains(aranan));
+                }
+            }
+            Val::Hata("Geçersiz argüman: içerir(metin, aranan)".to_string())
+        })),
+    );
+
+    env.set(
+        "büyük_harf".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::String(s) = &args[0] {
+                    return Val::String(s.to_uppercase());
+                }
+            }
+            Val::Hata("Hata".into())
+        })),
+    );
+
+    env.set(
+        "küçük_harf".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::String(s) = &args[0] {
+                    return Val::String(s.to_lowercase());
+                }
+            }
+            Val::Hata("Hata".into())
+        })),
+    );
+
+    env.set(
+        "kırp".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::String(s) = &args[0] {
+                    return Val::String(s.trim().to_string());
+                }
+            }
+            Val::Hata("Hata".into())
+        })),
+    );
+
+    env.set(
+        "tamsayı".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::Number(n) = &args[0] {
+                    return Val::Number(n.floor());
+                }
+            }
+            Val::Hata("Hata".into())
+        })),
+    );
+
+    env.set(
+        "metne_çevir".to_string(),
+        Val::Builtin(Rc::new(move |args| {
+            if args.len() == 1 {
                 let format_val_int_inner = |val: &Val| -> String {
                     match val {
                         Val::Number(n) => n.to_string(),
                         Val::String(s) => s.clone(),
-                        Val::Boolean(b) => if *b { "doğru".to_string() } else { "yanlış".to_string() },
+                        Val::Boolean(b) => {
+                            if *b {
+                                "doğru".to_string()
+                            } else {
+                                "yanlış".to_string()
+                            }
+                        }
                         Val::Bos => "boş".to_string(),
                         _ => format!("{:?}", val),
                     }
                 };
-                let strings: Vec<String> = arr.borrow().iter().map(format_val_int_inner).collect();
-                return Val::String(strings.join(ayirici));
+                return Val::String(format_val_int_inner(&args[0]));
             }
-        }
-        Val::Hata("Geçersiz argüman: birleştir(dizi, ayraç)".to_string())
-    })));
+            Val::Hata("Hata".into())
+        })),
+    );
 
-    env.set("içerir".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 2 {
-            if let (Val::String(metin), Val::String(aranan)) = (&args[0], &args[1]) {
-                return Val::Boolean(metin.contains(aranan));
-            }
-        }
-        Val::Hata("Geçersiz argüman: içerir(metin, aranan)".to_string())
-    })));
-
-    env.set("büyük_harf".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 1 { if let Val::String(s) = &args[0] { return Val::String(s.to_uppercase()); } }
-        Val::Hata("Hata".into())
-    })));
-
-    env.set("küçük_harf".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 1 { if let Val::String(s) = &args[0] { return Val::String(s.to_lowercase()); } }
-        Val::Hata("Hata".into())
-    })));
-
-    env.set("kırp".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 1 { if let Val::String(s) = &args[0] { return Val::String(s.trim().to_string()); } }
-        Val::Hata("Hata".into())
-    })));
-
-    env.set("tamsayı".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 1 { if let Val::Number(n) = &args[0] { return Val::Number(n.floor()); } }
-        Val::Hata("Hata".into())
-    })));
-
-    env.set("metne_çevir".to_string(), Val::Builtin(Rc::new(move |args| {
-        if args.len() == 1 {
-            let format_val_int_inner = |val: &Val| -> String {
-                match val {
-                    Val::Number(n) => n.to_string(),
-                    Val::String(s) => s.clone(),
-                    Val::Boolean(b) => if *b { "doğru".to_string() } else { "yanlış".to_string() },
-                    Val::Bos => "boş".to_string(),
-                    _ => format!("{:?}", val),
+    env.set(
+        "sayıya_çevir".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 1 {
+                if let Val::String(s) = &args[0] {
+                    if let Ok(n) = s.parse::<f64>() {
+                        return Val::Number(n);
+                    }
                 }
-            };
-            return Val::String(format_val_int_inner(&args[0]));
-        }
-        Val::Hata("Hata".into())
-    })));
-
-    env.set("sayıya_çevir".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 1 {
-            if let Val::String(s) = &args[0] {
-                if let Ok(n) = s.parse::<f64>() { return Val::Number(n); }
             }
-        }
-        Val::Hata("Hata".into())
-    })));
+            Val::Hata("Hata".into())
+        })),
+    );
 
-    env.set("rastgele".to_string(), Val::Builtin(Rc::new(|args| {
-        if args.len() == 2 {
-            if let (Val::Number(min), Val::Number(max)) = (&args[0], &args[1]) {
-                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-                let range = max - min;
-                if range > 0.0 {
-                    let rnd = (now % 10000) as f64 / 10000.0;
-                    return Val::Number((min + (rnd * range)).floor());
+    env.set(
+        "rastgele".to_string(),
+        Val::Builtin(Rc::new(|args| {
+            if args.len() == 2 {
+                if let (Val::Number(min), Val::Number(max)) = (&args[0], &args[1]) {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_nanos();
+                    let range = max - min;
+                    if range > 0.0 {
+                        let rnd = (now % 10000) as f64 / 10000.0;
+                        return Val::Number((min + (rnd * range)).floor());
+                    }
+                    return Val::Number(*min);
                 }
-                return Val::Number(*min);
             }
-        }
-        Val::Hata("Hata".into())
-    })));
+            Val::Hata("Hata".into())
+        })),
+    );
 
     env
-
 }

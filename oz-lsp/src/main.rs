@@ -283,7 +283,11 @@ impl LanguageServer for Backend {
     }
 }
 
-fn find_definition_in_stmt(stmt: &oz_parser::ast::Spanned<oz_parser::ast::Statement>, target_name: &str, def_span: &mut Option<std::ops::Range<usize>>) {
+fn find_definition_in_stmt(
+    stmt: &oz_parser::ast::Spanned<oz_parser::ast::Statement>,
+    target_name: &str,
+    def_span: &mut Option<std::ops::Range<usize>>,
+) {
     use oz_parser::ast::Statement;
     match &stmt.node {
         Statement::VarDecl(name, _) => {
@@ -310,12 +314,14 @@ fn find_definition_in_stmt(stmt: &oz_parser::ast::Spanned<oz_parser::ast::Statem
                 }
             }
         }
-        Statement::While(_, body) | Statement::For { body, .. } | Statement::ForEach { body, .. } => {
+        Statement::While(_, body)
+        | Statement::For { body, .. }
+        | Statement::ForEach { body, .. } => {
             for s in body {
                 find_definition_in_stmt(s, target_name, def_span);
             }
         }
-        Statement::Assignment(name, _) => {
+        Statement::Assignment(_name, _) => {
             // Note: In an exact IDE this would trace back to the actual VarDecl,
             // but for simplicity we'll just check if there's no other decl.
         }

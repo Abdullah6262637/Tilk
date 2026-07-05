@@ -624,7 +624,12 @@ pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, St
                         }
                     }
                 }
-                _ => return Err("HATA: For-Each döngüsü sadece diziler ve metinler üzerinde kullanılabilir".to_string()),
+                _ => {
+                    return Err(
+                        "HATA: For-Each döngüsü sadece diziler ve metinler üzerinde kullanılabilir"
+                            .to_string(),
+                    )
+                }
             }
             Ok(None)
         }
