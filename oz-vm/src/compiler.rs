@@ -237,6 +237,29 @@ impl Compiler {
                     self.instructions[skip_rhs_idx] = Instruction::JumpIfTrueKeep(end_idx);
                 }
                 _ => {
+                    if let (Expr::Literal(l), Expr::Literal(r)) = (&lhs.node, &rhs.node) {
+                        if let (Literal::Number(n1), Literal::Number(n2)) = (l, r) {
+                            let folded = match op {
+                                BinaryOp::Add => Some(Val::Number(n1 + n2)),
+                                BinaryOp::Sub => Some(Val::Number(n1 - n2)),
+                                BinaryOp::Mul => Some(Val::Number(n1 * n2)),
+                                BinaryOp::Div => Some(Val::Number(n1 / n2)),
+                                BinaryOp::Mod => Some(Val::Number(n1 % n2)),
+                                BinaryOp::Eq => Some(Val::Boolean((n1 - n2).abs() < f64::EPSILON)),
+                                BinaryOp::Ne => Some(Val::Boolean((n1 - n2).abs() >= f64::EPSILON)),
+                                BinaryOp::Lt => Some(Val::Boolean(n1 < n2)),
+                                BinaryOp::Gt => Some(Val::Boolean(n1 > n2)),
+                                BinaryOp::Le => Some(Val::Boolean(n1 <= n2)),
+                                BinaryOp::Ge => Some(Val::Boolean(n1 >= n2)),
+                                _ => None,
+                            };
+                            if let Some(val) = folded {
+                                self.instructions.push(Instruction::Constant(val));
+                                return Ok(());
+                            }
+                        }
+                    }
+
                     self.compile_expr(lhs)?;
                     self.compile_expr(rhs)?;
                     let inst = match op {
