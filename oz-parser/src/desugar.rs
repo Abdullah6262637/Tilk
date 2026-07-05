@@ -160,7 +160,7 @@ fn parse_interpolation_content(
             let mut brace_depth = 1;
             let expr_start = i + 1;
 
-            for (j, ec) in chars.by_ref() {
+            for (_, ec) in chars.by_ref() {
                 if ec == '{' {
                     brace_depth += 1;
                     expr_str.push(ec);
