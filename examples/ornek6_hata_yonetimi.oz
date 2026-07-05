@@ -3,7 +3,7 @@
 
 işlev güvenli_böl(a, b) {
     b == 0 ise {
-        hata_fırlat("Sıfıra bölme yapılamaz!");
+        döndür hata_fırlat("Sıfıra bölme yapılamaz!");
     }
     döndür a / b;
 }
@@ -11,14 +11,14 @@ işlev güvenli_böl(a, b) {
 // Hata yakalama ile güvenli işlem
 sonuç = güvenli_böl(10, 2) hata_ise {
     yazdır("Hata oluştu:", hata_mesajı);
-    döndür 0;
+    0;
 };
 yazdır("10 / 2 =", sonuç);
 
 // Hata fırlatılan durumda yakalama
 sonuç2 = güvenli_böl(10, 0) hata_ise {
     yazdır("Hata yakalandı:", hata_mesajı);
-    döndür 0;
+    0;
 };
 yazdır("10 / 0 sonucu:", sonuç2);
 

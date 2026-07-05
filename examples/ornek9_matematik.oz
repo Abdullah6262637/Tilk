@@ -28,6 +28,6 @@ yazdır("Geçen süre (ms):", bitiş - başlangıç);
 // Hata durumunda matematik
 negatif_kok = kök(0 - 1) hata_ise {
     yazdır("Negatif sayının karekökü alınamaz!");
-    döndür 0;
+    0;
 };
 yazdır("Negatif kök sonucu:", negatif_kok);

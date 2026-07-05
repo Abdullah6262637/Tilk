@@ -115,10 +115,14 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
                 let path_val = eval_expr(&args[0], env)?;
                 if let Val::String(path_str) = path_val {
                     let embedded_content = match path_str.as_str() {
-                        "std::sonuc" => Some("işlev basarili(deger) { r = {}; r[\"tur\"] = \"basarili\"; r[\"deger\"] = deger; döndür r; } işlev hata(mesaj) { r = {}; r[\"tur\"] = \"hata\"; r[\"hata\"] = mesaj; döndür r; }".to_string()),
-                        "std::matematik" => Some("işlev karekok(x) { döndür kök(x); } işlev ust(taban, kuvvet) { döndür üs(taban, kuvvet); } işlev mutlak_deger(x) { döndür mutlak(x); }".to_string()),
-                        "std::dosya" => Some("dahil_et(\"std::sonuc\"); işlev oku(yol) { r = dosya_oku(yol); (r) hata_ise { döndür std::sonuc::hata(\"Okuma hatası\"); }; döndür std::sonuc::basarili(r); } işlev yaz(yol, icerik) { r = dosya_yaz(yol, icerik); (r) hata_ise { döndür std::sonuc::hata(\"Yazma hatası\"); }; döndür std::sonuc::basarili(boş); } işlev sil(yol) { r = dosya_sil(yol); (r) hata_ise { döndür std::sonuc::hata(\"Silme hatası\"); }; döndür std::sonuc::basarili(boş); }".to_string()),
-                        "std::zaman" => Some("işlev simdi() { döndür şimdi(); } işlev bekle(ms) { döndür uyku(ms); }".to_string()),
+                        "std::sonuc" => Some(include_str!("../../std/sonuc.oz").to_string()),
+                        "std::matematik" => {
+                            Some(include_str!("../../std/matematik.oz").to_string())
+                        }
+                        "std::dosya" => Some(include_str!("../../std/dosya.oz").to_string()),
+                        "std::zaman" => Some(include_str!("../../std/zaman.oz").to_string()),
+                        "std::metin" => Some(include_str!("../../std/metin.oz").to_string()),
+                        "std::dizi" => Some(include_str!("../../std/dizi.oz").to_string()),
                         _ => None,
                     };
 

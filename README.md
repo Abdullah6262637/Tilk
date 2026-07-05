@@ -115,13 +115,14 @@ TİLK dilinin resmî EBNF dilbilgisi kuralları:
 
 ```ebnf
 Program         ::= Statement*
-Statement       ::= VarDecl | Assignment | IfStatement | WhileStatement | ForStatement | FnDeclaration | ReturnStatement | ExprStatement
+Statement       ::= VarDecl | Assignment | IfStatement | WhileStatement | ForStatement | ForEachStatement | FnDeclaration | ReturnStatement | ExprStatement
 VarDecl         ::= Identifier "=" Expr ";"
 Assignment      ::= Identifier "=" Expr ";"
 ReturnStatement ::= "döndür" Expr? ";"
 IfStatement     ::= Expr ("ise" | "se") Block ( "değilse" Block )?
 WhileStatement  ::= Expr "iken" Block
 ForStatement    ::= Identifier "," Expr ("dan" | "den" | "tan" | "ten") Expr ("e" | "a" | "ye" | "ya") "dek" ("artarak" | "azalarak")? Block
+ForEachStatement::= "her" "(" Identifier "içinde" Expr ")" Block
 FnDeclaration   ::= "işlev" Identifier "(" ParamList? ")" Block
 Block           ::= "{" Statement* "}"
 Expr            ::= LogicalOrExpr
@@ -255,20 +256,24 @@ cargo test --all
 
 ---
 
-## 10. GELECEK YOL HARİTASI
+## 10. ÖZELLİKLER VE YOL HARİTASI
 
-### Kısa Vadeli
+### ✅ Çalışan Özellikler
+- **Modüler Mimari:** Lexer, Parser, HM Tip Denetimi, Bytecode Compiler, VM bağımsız modüller halindedir.
+- **Yerel Sözdizimi:** `ise`, `iken`, `den/e dek`, `her` gibi Türkçenin yapısına uygun özgün blok yapıları.
+- **Hata Yönetimi:** `hata_ise` ve `tamamlanınca` bloklarıyla Türkçe dilbilgisine uyan istisna yönetimi.
+- **Standart Kütüphane:** Dahili modüller `std/` dizini içinde yer alır (örn. `matematik`, `metin`, `zaman`).
+- **Paket Yöneticisi:** `tilk.lock` tabanlı sürüm ve checksum (md5) yönetimli bağımlılık kurulum aracı (`oz-cli yükle`).
+
+### 🧪 Deneysel Özellikler
+- **C Backend Transpilation:** TİLK kaynak kodunu C'ye çevirerek GCC/Clang ile yerel çalıştırılabilir formata dönüştürür.
+- **Asenkron Kanallar:** Go benzeri kanallarla (channels) arka plan görevleri arası iletişim (`asenkron` anahtar kelimesi).
+- **Dil Sunucusu (LSP):** Otomatik tamamlama, anlık hata denetimi ve hover yardımı sağlayan `oz-lsp`.
+
+### 🚀 Gelecek Planları (Uzun Vadeli)
 - [ ] Closure (kapanış) desteği
 - [ ] String interpolasyonu (`"Merhaba {isim}"`)
 - [ ] Pattern matching (`eşleştir` anahtar kelimesi)
-- [ ] For-each döngüsü (`her eleman için { ... }`)
-
-### Orta Vadeli
-- [ ] VM optimizasyonları (instruction fusion, constant folding, tail call)
-- [ ] LSP geliştirmeleri (go-to-definition, find references, rename)
-- [ ] Gelişmiş tip sistemi ve generikler
-
-### Uzun Vadeli
 - [ ] **Cranelift/LLVM Arka Ucu**: Native makine kodu üretimi (AOT/JIT)
 - [ ] **WebAssembly (WASM)**: Tarayıcıda native hızda çalışma
 - [ ] **Paket Deposu**: Topluluk kütüphaneleri için merkezi kayıt sistemi

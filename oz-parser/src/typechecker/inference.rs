@@ -116,10 +116,14 @@ impl TypeChecker {
                     }
                     if let Expr::Literal(Literal::String(path_str)) = &args[0].node {
                         let embedded_content = match path_str.as_str() {
-                            "std::sonuc" => Some("işlev basarili(deger) { r = {}; r[\"tur\"] = \"basarili\"; r[\"deger\"] = deger; döndür r; } işlev hata(mesaj) { r = {}; r[\"tur\"] = \"hata\"; r[\"hata\"] = mesaj; döndür r; }".to_string()),
-                            "std::matematik" => Some("işlev karekok(x) { döndür kök(x); } işlev ust(taban, kuvvet) { döndür üs(taban, kuvvet); } işlev mutlak_deger(x) { döndür mutlak(x); }".to_string()),
-                            "std::dosya" => Some("dahil_et(\"std::sonuc\"); işlev oku(yol) { r = dosya_oku(yol); (r) hata_ise { döndür std::sonuc::hata(\"Okuma hatası\"); }; döndür std::sonuc::basarili(r); } işlev yaz(yol, icerik) { r = dosya_yaz(yol, icerik); (r) hata_ise { döndür std::sonuc::hata(\"Yazma hatası\"); }; döndür std::sonuc::basarili(boş); } işlev sil(yol) { r = dosya_sil(yol); (r) hata_ise { döndür std::sonuc::hata(\"Silme hatası\"); }; döndür std::sonuc::basarili(boş); }".to_string()),
-                            "std::zaman" => Some("işlev simdi() { döndür şimdi(); } işlev bekle(ms) { döndür uyku(ms); }".to_string()),
+                            "std::sonuc" => Some(include_str!("../../../std/sonuc.oz").to_string()),
+                            "std::matematik" => {
+                                Some(include_str!("../../../std/matematik.oz").to_string())
+                            }
+                            "std::dosya" => Some(include_str!("../../../std/dosya.oz").to_string()),
+                            "std::zaman" => Some(include_str!("../../../std/zaman.oz").to_string()),
+                            "std::metin" => Some(include_str!("../../../std/metin.oz").to_string()),
+                            "std::dizi" => Some(include_str!("../../../std/dizi.oz").to_string()),
                             _ => None,
                         };
 
@@ -206,6 +210,18 @@ impl TypeChecker {
                                         | "uyku"
                                         | "dahil_et"
                                         | "kanal"
+                                        | "biçimle"
+                                        | "uzunluk"
+                                        | "böl"
+                                        | "birleştir"
+                                        | "içerir"
+                                        | "büyük_harf"
+                                        | "küçük_harf"
+                                        | "kırp"
+                                        | "tamsayı"
+                                        | "metne_çevir"
+                                        | "sayıya_çevir"
+                                        | "rastgele"
                                 );
                                 if is_builtin {
                                     continue;
@@ -231,6 +247,21 @@ impl TypeChecker {
                     } else {
                         return Err("Tip Hatası: dahil_et parametresi doğrudan metin (literal string) olmalıdır".to_string());
                     }
+                }
+
+                // Variadic builtins — skip unify, just infer each arg
+                if prefix.is_none() && (name == "yazdır" || name == "yazdir") {
+                    for arg in args {
+                        self.infer_expr(arg, env, current_ret_ty)?;
+                    }
+                    return Ok(Type::Bos);
+                }
+
+                if prefix.is_none() && (name == "biçimle" || name == "bicimle") {
+                    for arg in args {
+                        self.infer_expr(arg, env, current_ret_ty)?;
+                    }
+                    return Ok(Type::String);
                 }
 
                 if prefix.is_none()
@@ -269,6 +300,7 @@ impl TypeChecker {
                         let is_builtin = matches!(
                             name.as_str(),
                             "yazdır"
+                                | "yazdir"
                                 | "boyut"
                                 | "ekle"
                                 | "hata_fırlat"
@@ -288,6 +320,18 @@ impl TypeChecker {
                                 | "uyku"
                                 | "dahil_et"
                                 | "kanal"
+                                | "biçimle"
+                                | "uzunluk"
+                                | "böl"
+                                | "birleştir"
+                                | "içerir"
+                                | "büyük_harf"
+                                | "küçük_harf"
+                                | "kırp"
+                                | "tamsayı"
+                                | "metne_çevir"
+                                | "sayıya_çevir"
+                                | "rastgele"
                         );
                         if is_builtin {
                             env.get(name)
@@ -641,9 +685,10 @@ impl TypeChecker {
                     };
                     self.unify(expected_ret, &actual_ty)?;
                 } else {
+                    // Outside function body (e.g. inside hata_ise block) —
+                    // just typecheck the expression, don't enforce Bos return
                     if let Some(expr) = opt_expr {
-                        let actual_ty = self.infer_expr(expr, env, current_ret_ty)?;
-                        self.unify(&Type::Bos, &actual_ty)?;
+                        let _actual_ty = self.infer_expr(expr, env, current_ret_ty)?;
                     }
                 }
             }
@@ -916,6 +961,167 @@ pub fn create_default_type_env(checker: &mut TypeChecker) -> TypeEnv {
         Scheme {
             vars: vec![ch_var],
             ty: kanal_ty,
+        },
+    );
+
+    // --- Yeni eklenen yerleşik fonksiyonlar ---
+
+    // biçimle: variadic, handled specially in infer_expr but needs env entry
+    let a_var = checker.new_var();
+    let bicimle_ty = Type::Function {
+        params: vec![Type::Var(a_var)],
+        ret: Box::new(Type::String),
+    };
+    env.set(
+        "biçimle".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: bicimle_ty,
+        },
+    );
+
+    // uzunluk (metin uzunluğu)
+    let uzunluk_ty = Type::Function {
+        params: vec![Type::String],
+        ret: Box::new(Type::Number),
+    };
+    env.set(
+        "uzunluk".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: uzunluk_ty,
+        },
+    );
+
+    // böl(metin, ayraç) -> Dizi
+    let bol_ty = Type::Function {
+        params: vec![Type::String, Type::String],
+        ret: Box::new(Type::Array(Box::new(Type::String))),
+    };
+    env.set(
+        "böl".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: bol_ty,
+        },
+    );
+
+    // birleştir(dizi, ayraç) -> Metin
+    let a_var = checker.new_var();
+    let birlestir_ty = Type::Function {
+        params: vec![Type::Array(Box::new(Type::Var(a_var))), Type::String],
+        ret: Box::new(Type::String),
+    };
+    env.set(
+        "birleştir".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: birlestir_ty,
+        },
+    );
+
+    // içerir(metin, aranan) -> Mantıksal
+    let icerir_ty = Type::Function {
+        params: vec![Type::String, Type::String],
+        ret: Box::new(Type::Boolean),
+    };
+    env.set(
+        "içerir".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: icerir_ty,
+        },
+    );
+
+    // büyük_harf(metin) -> Metin
+    let buyuk_harf_ty = Type::Function {
+        params: vec![Type::String],
+        ret: Box::new(Type::String),
+    };
+    env.set(
+        "büyük_harf".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: buyuk_harf_ty,
+        },
+    );
+
+    // küçük_harf(metin) -> Metin
+    let kucuk_harf_ty = Type::Function {
+        params: vec![Type::String],
+        ret: Box::new(Type::String),
+    };
+    env.set(
+        "küçük_harf".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: kucuk_harf_ty,
+        },
+    );
+
+    // kırp(metin) -> Metin
+    let kirp_ty = Type::Function {
+        params: vec![Type::String],
+        ret: Box::new(Type::String),
+    };
+    env.set(
+        "kırp".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: kirp_ty,
+        },
+    );
+
+    // tamsayı(sayı) -> Sayı
+    let tamsayi_ty = Type::Function {
+        params: vec![Type::Number],
+        ret: Box::new(Type::Number),
+    };
+    env.set(
+        "tamsayı".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: tamsayi_ty,
+        },
+    );
+
+    // metne_çevir(değer) -> Metin
+    let a_var = checker.new_var();
+    let metne_cevir_ty = Type::Function {
+        params: vec![Type::Var(a_var)],
+        ret: Box::new(Type::String),
+    };
+    env.set(
+        "metne_çevir".to_string(),
+        Scheme {
+            vars: vec![a_var],
+            ty: metne_cevir_ty,
+        },
+    );
+
+    // sayıya_çevir(metin) -> Sayı
+    let sayiya_cevir_ty = Type::Function {
+        params: vec![Type::String],
+        ret: Box::new(Type::Number),
+    };
+    env.set(
+        "sayıya_çevir".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: sayiya_cevir_ty,
+        },
+    );
+
+    // rastgele(min, max) -> Sayı
+    let rastgele_ty = Type::Function {
+        params: vec![Type::Number, Type::Number],
+        ret: Box::new(Type::Number),
+    };
+    env.set(
+        "rastgele".to_string(),
+        Scheme {
+            vars: vec![],
+            ty: rastgele_ty,
         },
     );
 

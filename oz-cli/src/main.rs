@@ -76,6 +76,19 @@ struct PaketDetails {
     giris: String,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct LockDependency {
+    surum: Option<String>,
+    kaynak: String,
+    checksum: Option<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct LockFile {
+    versiyon: u32,
+    bagimliliklar: std::collections::HashMap<String, LockDependency>,
+}
+
 fn print_parser_errors(
     errors: Vec<chumsky::error::Simple<oz_lexer::Token>>,
     file_name: &str,
@@ -509,6 +522,8 @@ giris = "kaynak/ana.oz"
                     fs::create_dir_all(&kitaplik_dir).unwrap();
                 }
 
+                let mut lock_deps = std::collections::HashMap::new();
+
                 println!("--- Bağımlılıklar Yükleniyor ---");
                 for (ad, dep) in bagimliliklar {
                     match dep {
@@ -547,6 +562,18 @@ işlev son_eleman(d) {
                             let target_path = kitaplik_dir.join(format!("{}.oz", ad));
                             fs::write(&target_path, code).unwrap();
                             println!("  -> İndirildi ve kaydedildi: {}", target_path.display());
+
+                            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                            std::hash::Hash::hash(&code, &mut hasher);
+                            let hash = std::hash::Hasher::finish(&hasher);
+                            lock_deps.insert(
+                                ad.clone(),
+                                LockDependency {
+                                    surum: Some(surum),
+                                    kaynak: "kayit_defteri".to_string(),
+                                    checksum: Some(format!("{:x}", hash)),
+                                },
+                            );
                         }
                         Dependency::Complex { git, tag, path } => {
                             if let Some(git_url) = git {
@@ -572,7 +599,7 @@ işlev son_eleman(d) {
                                     std::process::exit(1);
                                 }
 
-                                if let Some(tag_str) = tag {
+                                if let Some(tag_str) = tag.clone() {
                                     let mut checkout_cmd = std::process::Command::new("git")
                                         .args(&["checkout", &tag_str])
                                         .current_dir(&target_repo_dir)
@@ -585,9 +612,18 @@ işlev son_eleman(d) {
                                     "  -> Git deposu başarıyla yüklendi: {}",
                                     target_repo_dir.display()
                                 );
+
+                                lock_deps.insert(
+                                    ad.clone(),
+                                    LockDependency {
+                                        surum: tag,
+                                        kaynak: format!("git: {}", git_url),
+                                        checksum: None,
+                                    },
+                                );
                             } else if let Some(local_path) = path {
                                 println!("Yerel kütüphane kopyalanıyor: '{}'...", local_path);
-                                let src_path = PathBuf::from(local_path);
+                                let src_path = PathBuf::from(local_path.clone());
                                 let target_path = kitaplik_dir.join(format!("{}.oz", ad));
                                 if src_path.is_file() {
                                     fs::copy(&src_path, &target_path).unwrap();
@@ -614,10 +650,28 @@ işlev son_eleman(d) {
                                     }
                                     println!("  -> Klasör kopyalandı: {}", target_dir.display());
                                 }
+
+                                lock_deps.insert(
+                                    ad.clone(),
+                                    LockDependency {
+                                        surum: None,
+                                        kaynak: format!("yerel: {}", local_path),
+                                        checksum: None,
+                                    },
+                                );
                             }
                         }
                     }
                 }
+
+                let lock_file = LockFile {
+                    versiyon: 1,
+                    bagimliliklar: lock_deps,
+                };
+                let lock_toml = toml::to_string(&lock_file).unwrap();
+                fs::write("tilk.lock", lock_toml).unwrap();
+                println!("  -> tilk.lock güncellendi");
+
                 println!("Tüm bağımlılıklar başarıyla yüklendi!");
             } else {
                 println!("Yüklenecek bağımlılık bulunamadı.");
