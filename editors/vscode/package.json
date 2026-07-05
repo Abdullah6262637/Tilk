@@ -1,0 +1,37 @@
+{
+  "name": "tilk-lang",
+  "displayName": "TİLK Programlama Dili",
+  "description": "TİLK (.oz) programlama dili için sözdizimi renklendirmesi ve LSP desteği",
+  "version": "0.1.0",
+  "publisher": "tilk-lang",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Abdullah6262637/Tilk"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "tilk",
+        "aliases": ["TİLK", "Tilk", "tilk"],
+        "extensions": [".oz"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/tilk-icon.png",
+          "dark": "./icons/tilk-icon.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tilk",
+        "scopeName": "source.tilk",
+        "path": "./syntaxes/tilk.tmLanguage.json"
+      }
+    ]
+  },
+  "keywords": ["tilk", "türkçe", "programlama", "dili", "oz"]
+}

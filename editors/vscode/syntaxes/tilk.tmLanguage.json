@@ -1,0 +1,114 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TİLK",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#control" },
+    { "include": "#operators" },
+    { "include": "#builtins" },
+    { "include": "#functions" },
+    { "include": "#constants" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.tilk",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.tilk",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.tilk",
+              "match": "\\\\[nrt\"\\\\]"
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.tilk",
+          "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.tilk",
+          "match": "\\b(ise|se|değilse|iken|dek|artarak|azalarak|oldukça|olunca|işlev|döndür|hata_ise|hata_fırlat|hata_firlat|tamamlanınca|tamamlandığında|dahil_et)\\b"
+        }
+      ]
+    },
+    "control": {
+      "patterns": [
+        {
+          "name": "keyword.operator.logical.tilk",
+          "match": "\\b(ve|veya|değil)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.tilk",
+          "match": "(==|!=|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.assignment.tilk",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arithmetic.tilk",
+          "match": "[+\\-*/%]"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.tilk",
+          "match": "\\b(yazdır|boyut|ekle|kök|karekok|üs|ust|mutlak|şimdi|simdi|uyku|dosya_oku|dosya_yaz|dosya_sil|arkaplanda_çalıştır|arkaplanda_calistir|kanal)\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.tilk",
+          "match": "\\b([a-zA-ZçğıişöüÇĞIİŞÖÜ_][a-zA-Z0-9çğıişöüÇĞIİŞÖÜ_]*)\\s*(?=\\()"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.tilk",
+          "match": "\\b(doğru|yanlış|boş)\\b"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.tilk",
+          "match": "\\b[a-zA-ZçğıişöüÇĞIİŞÖÜ_][a-zA-Z0-9çğıişöüÇĞIİŞÖÜ_]*\\b"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.tilk"
+}
