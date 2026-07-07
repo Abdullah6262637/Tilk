@@ -9,7 +9,6 @@ macro_rules! type_err {
     }
 }
 
-
 pub struct TypeChecker {
     pub next_var: usize,
     pub substitutions: HashMap<usize, Type>,
@@ -79,11 +78,13 @@ impl TypeChecker {
                 let t = self.infer_expr(operand, env, current_ret_ty)?;
                 match op {
                     UnaryOp::Neg => {
-                        self.unify(&t, &Type::Number)?;
+                        self.unify(&t, &Type::Number)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Number)
                     }
                     UnaryOp::Not => {
-                        self.unify(&t, &Type::Boolean)?;
+                        self.unify(&t, &Type::Boolean)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Boolean)
                     }
                 }
@@ -94,32 +95,41 @@ impl TypeChecker {
                 let t2 = self.infer_expr(text_rhs, env, current_ret_ty)?;
                 match op {
                     BinaryOp::Add => {
-                        self.unify(&t1, &t2)?;
+                        self.unify(&t1, &t2)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         let resolved = self.resolve(&t1);
                         if resolved == Type::String || resolved == Type::Number {
                             Ok(resolved)
                         } else {
-                            self.unify(&t1, &Type::Number)?;
+                            self.unify(&t1, &Type::Number)
+                                .map_err(|e| e.with_span(expr.span.clone()))?;
                             Ok(Type::Number)
                         }
                     }
                     BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => {
-                        self.unify(&t1, &Type::Number)?;
-                        self.unify(&t2, &Type::Number)?;
+                        self.unify(&t1, &Type::Number)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
+                        self.unify(&t2, &Type::Number)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Number)
                     }
                     BinaryOp::Eq | BinaryOp::Ne => {
-                        self.unify(&t1, &t2)?;
+                        self.unify(&t1, &t2)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Boolean)
                     }
                     BinaryOp::Lt | BinaryOp::Gt | BinaryOp::Le | BinaryOp::Ge => {
-                        self.unify(&t1, &Type::Number)?;
-                        self.unify(&t2, &Type::Number)?;
+                        self.unify(&t1, &Type::Number)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
+                        self.unify(&t2, &Type::Number)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Boolean)
                     }
                     BinaryOp::And | BinaryOp::Or => {
-                        self.unify(&t1, &Type::Boolean)?;
-                        self.unify(&t2, &Type::Boolean)?;
+                        self.unify(&t1, &Type::Boolean)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
+                        self.unify(&t2, &Type::Boolean)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Boolean)
                     }
                 }
@@ -127,7 +137,10 @@ impl TypeChecker {
             Expr::Call(prefix, name, args) => {
                 if prefix.is_none() && name == "dahil_et" {
                     if args.is_empty() {
-                        return Err(type_err!("Tip Hatası: dahil_et en az bir argüman almalıdır"));
+                        return Err(
+                            type_err!("Tip Hatası: dahil_et en az bir argüman almalıdır")
+                                .with_span(expr.span.clone()),
+                        );
                     }
                     if let Expr::Literal(Literal::String(path_str)) = &args[0].node {
                         let embedded_content = match path_str.as_str() {
@@ -176,7 +189,8 @@ impl TypeChecker {
                             match token_res {
                                 Ok(token) => tokens.push((token, span)),
                                 Err(_) => {
-                                    return Err(type_err!("Sözcüksel analiz hatası at {:?}", span))
+                                    return Err(type_err!("Sözcüksel analiz hatası at {:?}", span)
+                                        .with_span(expr.span.clone()))
                                 }
                             }
                         }
@@ -283,7 +297,10 @@ impl TypeChecker {
                     && (name == "arkaplanda_çalıştır" || name == "arkaplanda_calistir")
                 {
                     if args.is_empty() {
-                        return Err(type_err!("Tip Hatası: arkaplanda_çalıştır en az bir argüman almalıdır"));
+                        return Err(type_err!(
+                            "Tip Hatası: arkaplanda_çalıştır en az bir argüman almalıdır"
+                        )
+                        .with_span(expr.span.clone()));
                     }
                     let fn_ty = self.infer_expr(&args[0], env, current_ret_ty)?;
                     let mut param_tys = Vec::new();
@@ -295,7 +312,8 @@ impl TypeChecker {
                         params: param_tys,
                         ret: Box::new(Type::Var(ret_var)),
                     };
-                    self.unify(&fn_ty, &expected_fn_ty)?;
+                    self.unify(&fn_ty, &expected_fn_ty)
+                        .map_err(|e| e.with_span(expr.span.clone()))?;
                     return Ok(Type::Task(Box::new(self.resolve(&Type::Var(ret_var)))));
                 }
 
@@ -364,7 +382,8 @@ impl TypeChecker {
                     params: arg_tys,
                     ret: Box::new(Type::Var(ret_var)),
                 };
-                self.unify(&fn_ty, &expected_fn_ty)?;
+                self.unify(&fn_ty, &expected_fn_ty)
+                    .map_err(|e| e.with_span(expr.span.clone()))?;
                 Ok(self.resolve(&Type::Var(ret_var)))
             }
             Expr::Array(elements) => {
@@ -376,7 +395,8 @@ impl TypeChecker {
             Expr::Map(pairs) => {
                 for (key_expr, val_expr) in pairs {
                     let key_ty = self.infer_expr(key_expr, env, current_ret_ty)?;
-                    self.unify(&key_ty, &Type::String)?;
+                    self.unify(&key_ty, &Type::String)
+                        .map_err(|e| e.with_span(expr.span.clone()))?;
                     let _val_ty = self.infer_expr(val_expr, env, current_ret_ty)?;
                 }
                 Ok(Type::Map(Box::new(Type::Var(self.new_var()))))
@@ -387,15 +407,18 @@ impl TypeChecker {
                 let resolved_arr = self.resolve(&arr_ty);
                 match resolved_arr {
                     Type::Array(_) => {
-                        self.unify(&idx_ty, &Type::Number)?;
+                        self.unify(&idx_ty, &Type::Number)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Var(self.new_var()))
                     }
                     Type::Map(_) => {
-                        self.unify(&idx_ty, &Type::String)?;
+                        self.unify(&idx_ty, &Type::String)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Var(self.new_var()))
                     }
                     Type::Channel(inner) => {
-                        self.unify(&idx_ty, &Type::Number)?;
+                        self.unify(&idx_ty, &Type::Number)
+                            .map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(*inner)
                     }
                     Type::Var(_id) => {
@@ -408,10 +431,13 @@ impl TypeChecker {
                         // Let's check: if we do not insert substitution here, then occurs check and unify will handle it when arkaplanda_çalıştır is unified!
                         // Yes! We can just return Ok(Type::Var(res_var)) without inserting substitutions.insert(id, array_ty)!
                         // Wait, if we don't insert, then id remains a Var, and later when unified with Channel(T), it works!
-                        // Let's check: self.unify(&idx_ty, &Type::Number)?;
+                        // Let's check: self.unify(&idx_ty, &Type::Number).map_err(|e| e.with_span(expr.span.clone()))?;
                         Ok(Type::Var(res_var))
                     }
-                    _ => Err(type_err!("Tip Hatası: Sadece diziler, haritalar ve kanallar indekslenebilir")),
+                    _ => Err(type_err!(
+                        "Tip Hatası: Sadece diziler, haritalar ve kanallar indekslenebilir"
+                    )
+                    .with_span(expr.span.clone())),
                 }
             }
             Expr::HataIse(base_expr, body) => {
@@ -443,7 +469,8 @@ impl TypeChecker {
                     }
                 }
                 if body_ty != Type::Bos {
-                    self.unify(&base_ty, &body_ty)?;
+                    self.unify(&base_ty, &body_ty)
+                        .map_err(|e| e.with_span(expr.span.clone()))?;
                 }
                 Ok(self.resolve(&base_ty))
             }
@@ -490,7 +517,8 @@ impl TypeChecker {
                 let val_ty = self.infer_expr(value, env, current_ret_ty)?;
                 if let Some(scheme) = env.get(name) {
                     let instantiated = self.instantiate(&scheme);
-                    self.unify(&instantiated, &val_ty)?;
+                    self.unify(&instantiated, &val_ty)
+                        .map_err(|e| e.with_span(stmt.span.clone()))?;
                 } else {
                     env.set(
                         name.clone(),
@@ -510,26 +538,34 @@ impl TypeChecker {
                 let resolved_arr = self.resolve(&arr_ty);
                 match resolved_arr {
                     Type::Array(_) => {
-                        self.unify(&idx_ty, &Type::Number)?;
+                        self.unify(&idx_ty, &Type::Number)
+                            .map_err(|e| e.with_span(stmt.span.clone()))?;
                     }
                     Type::Map(_) => {
-                        self.unify(&idx_ty, &Type::String)?;
+                        self.unify(&idx_ty, &Type::String)
+                            .map_err(|e| e.with_span(stmt.span.clone()))?;
                     }
                     Type::Channel(inner) => {
-                        self.unify(&idx_ty, &Type::Number)?;
-                        self.unify(&_val_ty, &inner)?;
+                        self.unify(&idx_ty, &Type::Number)
+                            .map_err(|e| e.with_span(stmt.span.clone()))?;
+                        self.unify(&_val_ty, &inner)
+                            .map_err(|e| e.with_span(stmt.span.clone()))?;
                     }
                     Type::Var(_id) => {
                         // Keep it flexible so it can unify with either Array or Channel
                     }
                     _ => {
-                        return Err(type_err!("Tip Hatası: Sadece diziler, haritalar ve kanallar güncellenebilir"));
+                        return Err(type_err!(
+                            "Tip Hatası: Sadece diziler, haritalar ve kanallar güncellenebilir"
+                        )
+                        .with_span(stmt.span.clone()));
                     }
                 }
             }
             Statement::If(cond, then_block, else_block) => {
                 let cond_ty = self.infer_expr(cond, env, current_ret_ty)?;
-                self.unify(&cond_ty, &Type::Boolean)?;
+                self.unify(&cond_ty, &Type::Boolean)
+                    .map_err(|e| e.with_span(stmt.span.clone()))?;
 
                 let mut then_env = TypeEnv::extend(env);
                 for s in then_block {
@@ -544,7 +580,8 @@ impl TypeChecker {
             }
             Statement::While(cond, body) => {
                 let cond_ty = self.infer_expr(cond, env, current_ret_ty)?;
-                self.unify(&cond_ty, &Type::Boolean)?;
+                self.unify(&cond_ty, &Type::Boolean)
+                    .map_err(|e| e.with_span(stmt.span.clone()))?;
 
                 let mut body_env = TypeEnv::extend(env);
                 for s in body {
@@ -559,9 +596,11 @@ impl TypeChecker {
                 body,
             } => {
                 let start_ty = self.infer_expr(start, env, current_ret_ty)?;
-                self.unify(&start_ty, &Type::Number)?;
+                self.unify(&start_ty, &Type::Number)
+                    .map_err(|e| e.with_span(stmt.span.clone()))?;
                 let end_ty = self.infer_expr(end, env, current_ret_ty)?;
-                self.unify(&end_ty, &Type::Number)?;
+                self.unify(&end_ty, &Type::Number)
+                    .map_err(|e| e.with_span(stmt.span.clone()))?;
 
                 let mut body_env = TypeEnv::extend(env);
                 body_env.set(
@@ -592,7 +631,7 @@ impl TypeChecker {
                         Type::Var(element_ty)
                     }
                     _ => {
-                        return Err(type_err!("Tip Hatası: For-Each döngüsü sadece diziler ve metinler üzerinde kullanılabilir"))
+                        return Err(type_err!("Tip Hatası: For-Each döngüsü sadece diziler ve metinler üzerinde kullanılabilir").with_span(stmt.span.clone()))
                     }
                 };
 
@@ -718,7 +757,8 @@ impl TypeChecker {
                     } else {
                         Type::Bos
                     };
-                    self.unify(expected_ret, &actual_ty)?;
+                    self.unify(expected_ret, &actual_ty)
+                        .map_err(|e| e.with_span(stmt.span.clone()))?;
                 } else {
                     // Outside function body (e.g. inside hata_ise block) —
                     // just typecheck the expression, don't enforce Bos return
@@ -734,7 +774,8 @@ impl TypeChecker {
                 let task_ty = self.infer_expr(gorev_expr, env, current_ret_ty)?;
                 let task_res_var = self.new_var();
                 let expected_task_ty = Type::Task(Box::new(Type::Var(task_res_var)));
-                self.unify(&task_ty, &expected_task_ty)?;
+                self.unify(&task_ty, &expected_task_ty)
+                    .map_err(|e| e.with_span(stmt.span.clone()))?;
 
                 let mut body_env = TypeEnv::extend(env);
                 let resolved_res_ty = self.resolve(&Type::Var(task_res_var));

@@ -136,6 +136,35 @@ fn print_parser_errors(
     }
 }
 
+fn print_type_error(err: oz_parser::typechecker::types::TypeError, file_name: &str, source: &str) {
+    use ariadne::{Color, Label, Report, ReportKind, Source};
+
+    let span = err.span.unwrap_or(0..0);
+
+    let mut builder =
+        Report::build(ReportKind::Error, file_name, span.start).with_message(&err.message);
+
+    if span.start != span.end {
+        builder = builder.with_label(
+            Label::new((file_name, span))
+                .with_message("Bu ifade hatalı")
+                .with_color(Color::Yellow),
+        );
+    }
+
+    if let Some(expected) = err.expected {
+        builder = builder.with_note(format!("Beklenen tip: {:?}", expected));
+    }
+    if let Some(found) = err.found {
+        builder = builder.with_note(format!("Bulunan tip: {:?}", found));
+    }
+
+    builder
+        .finish()
+        .eprint((file_name, Source::from(source)))
+        .unwrap();
+}
+
 fn run_file(file: &PathBuf) -> Result<(), String> {
     let content = fs::read_to_string(file)
         .map_err(|e| format!("Dosya okunamadı {}: {}", file.display(), e))?;
@@ -172,7 +201,10 @@ fn run_file(file: &PathBuf) -> Result<(), String> {
         }
     };
 
-    oz_parser::typechecker::check_program(&ast)?;
+    if let Err(type_err) = oz_parser::typechecker::check_program(&ast) {
+        print_type_error(type_err, &file_name, &content);
+        return Err("Tip denetimi hatası".to_string());
+    }
 
     let compiler = oz_vm::compiler::Compiler::new();
     let insts = compiler.compile_program(&ast)?;
@@ -371,7 +403,8 @@ giris = "kaynak/ana.oz"
                 };
 
                 if let Err(type_err) = oz_parser::typechecker::check_program(&ast) {
-                    eprintln!("HATA: Tip denetim hatası: {}", type_err);
+                    let file_name = entry_file.to_string_lossy().to_string();
+                    print_type_error(type_err, &file_name, &content);
                     std::process::exit(1);
                 }
 
