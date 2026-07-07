@@ -8,6 +8,8 @@ struct Frame {
     slots: Vec<Val>,
 }
 
+const MAX_CALL_DEPTH: usize = 5000;
+
 pub struct VM {
     instructions: Vec<Instruction>,
     ip: usize,
@@ -15,6 +17,7 @@ pub struct VM {
     globals: HashMap<String, Val>,
     frames: Vec<Frame>,
     pub stdout: Option<Rc<RefCell<Vec<u8>>>>,
+    call_depth: usize,
 }
 
 impl VM {
@@ -92,6 +95,7 @@ impl VM {
             globals,
             frames: Vec::new(),
             stdout: None,
+            call_depth: 0,
         }
     }
 
@@ -355,6 +359,13 @@ impl VM {
                                 return Err(format!(
                                     "HATA: {} parametre bekleniyor, fakat {} verildi",
                                     param_count, arg_count
+                                ));
+                            }
+                            self.call_depth += 1;
+                            if self.call_depth > MAX_CALL_DEPTH {
+                                return Err(format!(
+                                    "HATA: Yığın taşması — maksimum çağrı derinliği ({}) aşıldı",
+                                    MAX_CALL_DEPTH
                                 ));
                             }
                             let frame = Frame {
@@ -796,6 +807,7 @@ impl VM {
                         .pop()
                         .ok_or("HATA: Çerçeve yığını boş (Return)")?;
                     self.ip = frame.return_address;
+                    self.call_depth = self.call_depth.saturating_sub(1);
                     self.stack.push(ret_val);
                 }
                 Instruction::Array(size) => {

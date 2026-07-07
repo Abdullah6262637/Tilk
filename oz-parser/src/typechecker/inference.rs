@@ -758,6 +758,7 @@ impl TypeChecker {
                     self.infer_stmt(s, &mut body_env, current_ret_ty)?;
                 }
             }
+            Statement::Break | Statement::Continue => {}
         }
         Ok(())
     }

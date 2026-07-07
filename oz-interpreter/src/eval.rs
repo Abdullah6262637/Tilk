@@ -569,7 +569,11 @@ pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, St
                             break;
                         }
                         if let Some(ret) = eval_program(body, env)? {
-                            return Ok(Some(ret));
+                            match ret {
+                                Val::Break => break,
+                                Val::Continue => continue,
+                                _ => return Ok(Some(ret)),
+                            }
                         }
                     }
                     _ => {
@@ -613,7 +617,11 @@ pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, St
                         let child_env = Env::extend(env);
                         child_env.set(var.clone(), Val::Number(i));
                         if let Some(ret) = eval_program(body, &child_env)? {
-                            return Ok(Some(ret));
+                            match ret {
+                                Val::Break => break,
+                                Val::Continue => {} // just skip to the increment step
+                                _ => return Ok(Some(ret)),
+                            }
                         }
 
                         match step_dir {
@@ -639,7 +647,11 @@ pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, St
                         let child_env = Env::extend(env);
                         child_env.set(var.clone(), item);
                         if let Some(ret) = eval_program(body, &child_env)? {
-                            return Ok(Some(ret));
+                            match ret {
+                                Val::Break => break,
+                                Val::Continue => continue,
+                                _ => return Ok(Some(ret)),
+                            }
                         }
                     }
                 }
@@ -648,7 +660,11 @@ pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, St
                         let child_env = Env::extend(env);
                         child_env.set(var.clone(), Val::String(c.to_string()));
                         if let Some(ret) = eval_program(body, &child_env)? {
-                            return Ok(Some(ret));
+                            match ret {
+                                Val::Break => break,
+                                Val::Continue => continue,
+                                _ => return Ok(Some(ret)),
+                            }
                         }
                     }
                 }
@@ -730,6 +746,8 @@ pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, St
             child_env.set("sonuc".to_string(), result_val);
             eval_program(body, &child_env)
         }
+        Statement::Break => Ok(Some(Val::Break)),
+        Statement::Continue => Ok(Some(Val::Continue)),
     }
 }
 

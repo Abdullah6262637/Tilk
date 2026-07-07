@@ -66,6 +66,7 @@ fn desugar_stmt(stmt: &mut Spanned<Statement>) -> Result<(), String> {
                 desugar_stmt(s)?;
             }
         }
+        Statement::Break | Statement::Continue => {}
     }
     Ok(())
 }

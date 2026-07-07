@@ -258,14 +258,26 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
                 _ => Err(Simple::custom(span, "Geçersiz atama hedefi (LHS)")),
             });
 
-        // koşul ise { ... } değilse { ... }
+        // koşul ise { ... } değilse { ... } VEYA değilse koşul2 ise { ... }
         let if_stmt = expr
             .clone()
             .then_ignore(suffix_parser(&[
                 "ise", "se", "olunca", "olünce", "ince", "ınca", "unca", "ünce",
             ]))
             .then(block.clone())
-            .then(just(Token::Degilse).ignore_then(block.clone()).or_not())
+            .then(
+                just(Token::Degilse)
+                    .ignore_then(
+                        block.clone().or(stmt.clone().try_map(|s, span| match &s.node {
+                            Statement::If(_, _, _) => Ok(vec![s]),
+                            _ => Err(Simple::custom(
+                                span,
+                                "'değilse' sonrasında sadece blok '{ ... }' veya '... ise' gelebilir",
+                            )),
+                        })),
+                    )
+                    .or_not(),
+            )
             .map(|((cond, then_block), else_block)| Statement::If(cond, then_block, else_block))
             .map_with_span(Spanned::new);
 
@@ -386,6 +398,16 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
             .map(|(gorev, body)| Statement::Tamamlaninca(gorev, body))
             .map_with_span(Spanned::new);
 
+        let break_stmt = just(Token::Kir)
+            .then_ignore(just(Token::Semicolon))
+            .map(|_| Statement::Break)
+            .map_with_span(Spanned::new);
+
+        let continue_stmt = just(Token::DevamEt)
+            .then_ignore(just(Token::Semicolon))
+            .map(|_| Statement::Continue)
+            .map_with_span(Spanned::new);
+
         assign_stmt
             .or(if_stmt)
             .or(while_stmt)
@@ -394,6 +416,8 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
             .or(fn_decl)
             .or(return_stmt)
             .or(tamamlaninca_stmt)
+            .or(break_stmt)
+            .or(continue_stmt)
             .or(expr_stmt)
     })
 }

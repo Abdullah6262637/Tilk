@@ -106,4 +106,6 @@ pub enum Statement {
     Return(Option<Spanned<Expr>>),
     Expr(Spanned<Expr>),
     Tamamlaninca(Spanned<Expr>, Vec<Spanned<Statement>>),
+    Break,
+    Continue,
 }

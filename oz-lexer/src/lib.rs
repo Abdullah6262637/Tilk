@@ -40,6 +40,15 @@ pub enum Token {
     #[token("icinde")]
     Icinde,
 
+    #[token("kır")]
+    #[token("kir")]
+    Kir,
+
+    #[token("devam_et")]
+    #[token("devam")]
+    DevamEt,
+
+
     // Operators
     #[token("=")]
     Assign,

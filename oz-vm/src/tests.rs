@@ -332,6 +332,23 @@ fn test_golden_ornekler() {
         "../examples/ornek5_karma.oz",
         "../tests/golden/ornek5_karma.stdout",
     );
+    run_golden_test_file(
+        "../examples/ornek6_hata_yonetimi.oz",
+        "../tests/golden/ornek6_hata_yonetimi.stdout",
+    );
+    run_golden_test_file(
+        "../examples/ornek7_diziler_haritalar.oz",
+        "../tests/golden/ornek7_diziler_haritalar.stdout",
+    );
+    run_golden_test_file(
+        "../examples/ornek13_kontrol_akisi.oz",
+        "../tests/golden/ornek13_kontrol_akisi.stdout",
+    );
+    run_golden_test_file(
+        "../examples/ornek14_elif.oz",
+        "../tests/golden/ornek14_elif.stdout",
+    );
+    // ornek8, 9, ve 10 zaman damgası/süre içerdiğinden deterministic golden teste uygun değil
 }
 
 #[test]
@@ -504,4 +521,22 @@ fn test_kanallar_ve_eszamanlilik() {
     assert_eq!(vm.get_global("deger_ilk"), Some(Val::Number(42.0)));
     assert_eq!(vm.get_global("deger_ikinci"), Some(Val::Number(99.0)));
     assert_eq!(vm.get_global("deger_ucuncu"), Some(Val::Bos));
+}
+
+#[test]
+fn test_yigin_tasmasi() {
+    let src = r#"
+        işlev sonsuz(x) {
+            döndür sonsuz(x + 1);
+        }
+        sonsuz(0);
+    "#;
+    let res = run_bytecode(src);
+    assert!(res.is_err(), "Sonsuz recursion hata fırlatmalıydı!");
+    let err_msg = res.err().unwrap();
+    assert!(
+        err_msg.contains("Yığın taşması"),
+        "Hata mesajı 'Yığın taşması' içermeliydi, gerçek: {}",
+        err_msg
+    );
 }

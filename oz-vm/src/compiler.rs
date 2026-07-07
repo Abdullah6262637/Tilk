@@ -16,6 +16,7 @@ pub struct Compiler {
     loaded_files: HashSet<PathBuf>,
     loading_stack: Vec<PathBuf>,
     current_namespace: Option<String>,
+    loop_stack: Vec<(Vec<usize>, Vec<usize>)>,
 }
 
 impl Compiler {
@@ -27,6 +28,7 @@ impl Compiler {
             loaded_files: HashSet::new(),
             loading_stack: Vec::new(),
             current_namespace: None,
+            loop_stack: Vec::new(),
         }
     }
 
@@ -571,13 +573,23 @@ impl Compiler {
                 let jump_false_idx = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfFalse(0));
 
+                self.loop_stack.push((Vec::new(), Vec::new()));
                 for s in body {
                     self.compile_stmt(s)?;
+                }
+                let (continues, breaks) = self.loop_stack.pop().unwrap();
+                
+                for idx in continues {
+                    self.instructions[idx] = Instruction::Jump(start_idx);
                 }
 
                 self.instructions.push(Instruction::Jump(start_idx));
                 let end_idx = self.instructions.len();
                 self.instructions[jump_false_idx] = Instruction::JumpIfFalse(end_idx);
+                
+                for idx in breaks {
+                    self.instructions[idx] = Instruction::Jump(end_idx);
+                }
             }
 
             Statement::For {
@@ -614,8 +626,15 @@ impl Compiler {
                 let jump_end_idx = self.instructions.len();
                 self.instructions.push(Instruction::JumpIfFalse(0));
 
+                self.loop_stack.push((Vec::new(), Vec::new()));
                 for s in body {
                     self.compile_stmt(s)?;
+                }
+                let (continues, breaks) = self.loop_stack.pop().unwrap();
+
+                let continue_idx = self.instructions.len();
+                for idx in continues {
+                    self.instructions[idx] = Instruction::Jump(continue_idx);
                 }
 
                 match &var_ref {
@@ -641,6 +660,9 @@ impl Compiler {
 
                 let loop_end = self.instructions.len();
                 self.instructions[jump_end_idx] = Instruction::JumpIfFalse(loop_end);
+                for idx in breaks {
+                    self.instructions[idx] = Instruction::Jump(loop_end);
+                }
             }
             Statement::ForEach {
                 var,
@@ -729,8 +751,15 @@ impl Compiler {
                         .push(Instruction::StoreGlobal(slot.clone())),
                 }
 
+                self.loop_stack.push((Vec::new(), Vec::new()));
                 for s in body {
                     self.compile_stmt(s)?;
+                }
+                let (continues, breaks) = self.loop_stack.pop().unwrap();
+
+                let continue_idx = self.instructions.len();
+                for idx in continues {
+                    self.instructions[idx] = Instruction::Jump(continue_idx);
                 }
 
                 match &i_ref {
@@ -753,6 +782,9 @@ impl Compiler {
 
                 let loop_end = self.instructions.len();
                 self.instructions[jump_end_idx] = Instruction::JumpIfFalse(loop_end);
+                for idx in breaks {
+                    self.instructions[idx] = Instruction::Jump(loop_end);
+                }
             }
             Statement::FnDecl {
                 name,
@@ -852,6 +884,22 @@ impl Compiler {
 
                 for s in body {
                     self.compile_stmt(s)?;
+                }
+            }
+            Statement::Break => {
+                if let Some((_, breaks)) = self.loop_stack.last_mut() {
+                    breaks.push(self.instructions.len());
+                    self.instructions.push(Instruction::Jump(0));
+                } else {
+                    return Err("HATA: 'kır' sadece döngü içinde kullanılabilir".to_string());
+                }
+            }
+            Statement::Continue => {
+                if let Some((continues, _)) = self.loop_stack.last_mut() {
+                    continues.push(self.instructions.len());
+                    self.instructions.push(Instruction::Jump(0));
+                } else {
+                    return Err("HATA: 'devam_et' sadece döngü içinde kullanılabilir".to_string());
                 }
             }
         }

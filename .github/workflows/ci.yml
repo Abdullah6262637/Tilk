@@ -43,6 +43,13 @@ jobs:
       - name: Testler
         run: cargo test --all
 
+      - name: Örnek Dosya Duman Testleri
+        run: |
+          for f in examples/*.oz; do
+            echo "==> Çalıştırılıyor: $f"
+            cargo run --bin oz-cli --release -- calistir "$f" || exit 1
+          done
+
   build-release:
     name: Release Build Kontrolü
     runs-on: ubuntu-latest

@@ -21,6 +21,8 @@ pub enum Val {
     Task(Rc<RefCell<TaskState>>),
     Channel(Rc<RefCell<std::collections::VecDeque<Val>>>),
     Return(Box<Val>),
+    Break,
+    Continue,
 }
 
 #[derive(Clone)]
@@ -66,6 +68,8 @@ impl std::fmt::Debug for Val {
             Val::Task(_) => write!(f, "Task"),
             Val::Channel(_) => write!(f, "Channel"),
             Val::Return(v) => write!(f, "Return({:?})", v),
+            Val::Break => write!(f, "Break"),
+            Val::Continue => write!(f, "Continue"),
         }
     }
 }
@@ -83,6 +87,8 @@ impl PartialEq for Val {
             (Val::Task(a), Val::Task(b)) => Rc::ptr_eq(a, b),
             (Val::Channel(a), Val::Channel(b)) => Rc::ptr_eq(a, b),
             (Val::Return(a), Val::Return(b)) => a == b,
+            (Val::Break, Val::Break) => true,
+            (Val::Continue, Val::Continue) => true,
             _ => false,
         }
     }
