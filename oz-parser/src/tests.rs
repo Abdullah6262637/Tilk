@@ -131,7 +131,9 @@ fn test_error_class_3_func_args_mismatch() {
 fn test_error_class_4_indexing_wrong_type() {
     let src = "x = 5; y = x[0];";
     let err = typecheck_helper(src).unwrap_err();
-    assert!(err.message.contains("Sadece diziler, haritalar ve kanallar indekslenebilir"));
+    assert!(err
+        .message
+        .contains("Sadece diziler, haritalar ve kanallar indekslenebilir"));
 }
 
 #[test]
