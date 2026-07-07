@@ -74,3 +74,24 @@ jobs:
 
       - name: Release Build
         run: cargo build --release
+
+  fuzz-smoke:
+    name: Fuzz Duman Testi (60s)
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rust Nightly Kur
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: cargo-fuzz Kur
+        run: cargo install cargo-fuzz
+
+      - name: Lexer Fuzz (60s)
+        run: cargo +nightly fuzz run fuzz_lexer -- -max_total_time=60
+        working-directory: fuzz
+
+      - name: Parser Fuzz (60s)
+        run: cargo +nightly fuzz run fuzz_parser -- -max_total_time=60
+        working-directory: fuzz
