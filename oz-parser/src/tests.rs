@@ -99,3 +99,44 @@ fn test_turkce_ekler() {
     let ast = res.unwrap();
     assert_eq!(ast.len(), 4);
 }
+
+fn typecheck_helper(src: &str) -> Result<(), crate::typechecker::types::TypeError> {
+    let ast = parse_helper(src).unwrap();
+    crate::typechecker::check_program(&ast)
+}
+
+#[test]
+fn test_error_class_1_undefined_var() {
+    let src = "yazdır(olmayan_degisken);";
+    let err = typecheck_helper(src).unwrap_err();
+    assert!(err.message.contains("Tanımlanamayan değişken"));
+}
+
+#[test]
+fn test_error_class_2_type_mismatch() {
+    let src = "sonuc = 5 + \"metin\";";
+    let err = typecheck_helper(src).unwrap_err();
+    assert!(err.message.contains("birleştirilemiyor"));
+    assert_eq!(err.expected, Some(crate::typechecker::types::Type::Number));
+}
+
+#[test]
+fn test_error_class_3_func_args_mismatch() {
+    let src = "işlev topla(a, b) { döndür a + b; } topla(5);";
+    let err = typecheck_helper(src).unwrap_err();
+    assert!(err.message.contains("argüman sayısı uyuşmuyor"));
+}
+
+#[test]
+fn test_error_class_4_indexing_wrong_type() {
+    let src = "x = 5; y = x[0];";
+    let err = typecheck_helper(src).unwrap_err();
+    assert!(err.message.contains("Sadece diziler, haritalar ve kanallar indekslenebilir"));
+}
+
+#[test]
+fn test_error_class_5_infinite_type() {
+    let src = "dizi = []; dizi = ekle(dizi, dizi);";
+    let err = typecheck_helper(src).unwrap_err();
+    assert!(err.message.contains("Sonsuz tip"));
+}
