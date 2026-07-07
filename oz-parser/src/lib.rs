@@ -469,5 +469,6 @@ pub fn parse_tokens(
 #[cfg(test)]
 mod tests;
 
+pub mod fmt;
 #[cfg(test)]
 mod tests_prop;

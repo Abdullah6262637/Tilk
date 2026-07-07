@@ -51,6 +51,14 @@ enum Commands {
     Test,
     /// Projedeki bağımlılıkları kitaplık/ altına indirir.
     Yukle,
+    /// .oz dosyasını formatlar (pretty-print).
+    Fmt {
+        /// Hedef dosya yolu
+        file: PathBuf,
+        /// Dosyayı yerinde düzenler (üzerine yazar)
+        #[arg(long)]
+        in_place: bool,
+    },
 }
 
 #[derive(Deserialize, Debug)]
@@ -793,6 +801,49 @@ işlev son_eleman(d) {
                 println!("Tüm bağımlılıklar başarıyla yüklendi!");
             } else {
                 println!("Yüklenecek bağımlılık bulunamadı.");
+            }
+        }
+        Commands::Fmt { file, in_place } => {
+            let content = match fs::read_to_string(&file) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("HATA: Dosya okunamadı: {}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            let lexer = oz_lexer::Token::lexer(&content);
+            let mut tokens = Vec::new();
+            for (token_res, span) in lexer.spanned() {
+                match token_res {
+                    Ok(token) => tokens.push((token, span)),
+                    Err(_) => {
+                        eprintln!("HATA: Sözcüksel analiz hatası at {:?}", span);
+                        std::process::exit(1);
+                    }
+                }
+            }
+
+            match oz_parser::parse_tokens(tokens, content.len()) {
+                Ok(ast) => {
+                    let mut formatter = oz_parser::fmt::Formatter::new();
+                    let formatted_code = formatter.format_program(&ast);
+                    if in_place {
+                        if let Err(e) = fs::write(&file, formatted_code) {
+                            eprintln!("HATA: Dosya yazılamadı: {}", e);
+                            std::process::exit(1);
+                        }
+                        println!("{} başarıyla formatlandı.", file.display());
+                    } else {
+                        println!("{}", formatted_code);
+                    }
+                }
+                Err(errors) => {
+                    let file_name = file.to_string_lossy().to_string();
+                    eprintln!("HATA: Formatlanacak dosyada sözdizimi hataları var:");
+                    print_parser_errors(errors, &file_name, &content);
+                    std::process::exit(1);
+                }
             }
         }
     }
