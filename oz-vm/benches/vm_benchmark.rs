@@ -1,6 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
+use criterion::{criterion_group, criterion_main, Criterion};
 use oz_vm::{compiler::Compiler, vm::VM};
-use oz_parser::ast::Statement;
+use logos::Logos;
 
 fn bench_vm_math_loop(c: &mut Criterion) {
     let source_code = r#"
@@ -21,7 +22,8 @@ fn bench_vm_math_loop(c: &mut Criterion) {
     
     let ast = oz_parser::parse_tokens(tokens, source_code.len()).unwrap();
     let mut compiler = Compiler::new();
-    let instructions = compiler.compile(&ast);
+    let mut instructions = Vec::new();
+    compiler.compile(&ast, &mut instructions).unwrap();
 
     c.bench_function("vm_math_loop_1000", |b| {
         b.iter(|| {
