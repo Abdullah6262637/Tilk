@@ -7,3 +7,10 @@ edition = "2021"
 oz-parser = { path = "../oz-parser" }
 oz-lexer = { path = "../oz-lexer" }
 logos.workspace = true
+
+[dev-dependencies]
+criterion = "0.8.2"
+
+[[bench]]
+name = "vm_benchmark"
+harness = false
