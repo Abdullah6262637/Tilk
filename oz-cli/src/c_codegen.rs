@@ -88,7 +88,7 @@ impl CCodegen {
     fn compile_stmt(&self, stmt: &Spanned<Statement>) -> Result<String, String> {
         let mut out = String::new();
         match &stmt.node {
-            Statement::VarDecl(name, expr) => {
+            Statement::VarDecl(name, _ty_opt, expr) => {
                 let expr_str = self.compile_expr(expr)?;
                 out.push_str(&format!(
                     "    TilkVal {} = {};\n",

@@ -488,7 +488,7 @@ pub fn eval_expr(expr: &Spanned<Expr>, env: &Env) -> Result<Val, String> {
 
 pub fn eval_stmt(stmt: &Spanned<Statement>, env: &Env) -> Result<Option<Val>, String> {
     match &stmt.node {
-        Statement::VarDecl(name, value) => {
+        Statement::VarDecl(name, _ty_opt, value) => {
             let val = eval_expr(value, env)?;
             if let Val::Return(_) = val {
                 Ok(Some(val))

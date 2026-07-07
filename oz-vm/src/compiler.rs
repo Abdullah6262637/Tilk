@@ -522,7 +522,14 @@ impl Compiler {
 
     fn compile_stmt(&mut self, stmt: &Spanned<Statement>) -> Result<(), String> {
         match &stmt.node {
-            Statement::VarDecl(name, value) | Statement::Assignment(name, value) => {
+            Statement::VarDecl(name, _ty_opt, value) => {
+                self.compile_expr(value)?;
+                match self.declare_variable(name) {
+                    VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(slot)),
+                    VarRef::Global(slot) => self.instructions.push(Instruction::StoreGlobal(slot)),
+                }
+            }
+            Statement::Assignment(name, value) => {
                 self.compile_expr(value)?;
                 match self.declare_variable(name) {
                     VarRef::Local(slot) => self.instructions.push(Instruction::StoreLocal(slot)),

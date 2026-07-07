@@ -15,6 +15,7 @@ pub enum Type {
     Hata,
     Option(Box<Type>),
     Generic(String),
+    Tuple(Vec<Type>),
 }
 
 #[derive(Clone, Debug)]

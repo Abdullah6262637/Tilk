@@ -35,6 +35,81 @@ impl TypeChecker {
         v
     }
 
+    pub fn parse_type_annotation(
+        &mut self,
+        annot: &crate::ast::TypeAnnotation,
+        generic_vars: &std::collections::HashMap<String, usize>,
+    ) -> Type {
+        match annot {
+            crate::ast::TypeAnnotation::Simple(name) => match name.as_str() {
+                "Sayı" | "sayı" | "Sayi" | "sayi" => Type::Number,
+                "Metin" | "metin" => Type::String,
+                "Mantıksal" | "mantıksal" | "Mantikal" | "mantikal" => Type::Boolean,
+                "Boş" | "boş" | "Bos" | "bos" => Type::Bos,
+                _ => {
+                    if let Some(&id) = generic_vars.get(name) {
+                        Type::Var(id)
+                    } else {
+                        Type::Var(self.new_var())
+                    }
+                }
+            },
+            crate::ast::TypeAnnotation::Generic(name, args) => {
+                let parsed_args: Vec<Type> = args
+                    .iter()
+                    .map(|a| self.parse_type_annotation(&a.node, generic_vars))
+                    .collect();
+                
+                match name.as_str() {
+                    "Opsiyon" | "opsiyon" => {
+                        if parsed_args.len() == 1 {
+                            Type::Option(Box::new(parsed_args[0].clone()))
+                        } else {
+                            Type::Var(self.new_var())
+                        }
+                    }
+                    "Dizi" | "dizi" => {
+                        if parsed_args.len() == 1 {
+                            Type::Array(Box::new(parsed_args[0].clone()))
+                        } else {
+                            Type::Var(self.new_var())
+                        }
+                    }
+                    "Harita" | "harita" => {
+                        if parsed_args.len() == 1 {
+                            Type::Map(Box::new(parsed_args[0].clone()))
+                        } else {
+                            Type::Var(self.new_var())
+                        }
+                    }
+                    "Kanal" | "kanal" => {
+                        if parsed_args.len() == 1 {
+                            Type::Channel(Box::new(parsed_args[0].clone()))
+                        } else {
+                            Type::Var(self.new_var())
+                        }
+                    }
+                    "Görev" | "görev" => {
+                        if parsed_args.len() == 1 {
+                            Type::Task(Box::new(parsed_args[0].clone()))
+                        } else {
+                            Type::Var(self.new_var())
+                        }
+                    }
+                    _ => Type::Generic(name.clone()) // For now treating other things as Generic
+                }
+            }
+            crate::ast::TypeAnnotation::Tuple(types) => {
+                Type::Tuple(
+                    types
+                        .iter()
+                        .map(|t| self.parse_type_annotation(&t.node, generic_vars))
+                        .collect(),
+                )
+            }
+        }
+    }
+
     pub fn infer_expr(
         &mut self,
         expr: &Spanned<Expr>,
@@ -513,7 +588,34 @@ impl TypeChecker {
         current_ret_ty: &Option<Type>,
     ) -> Result<(), super::types::TypeError> {
         match &stmt.node {
-            Statement::VarDecl(name, value) | Statement::Assignment(name, value) => {
+            Statement::VarDecl(name, ty_opt, value) => {
+                let val_ty = self.infer_expr(value, env, current_ret_ty)?;
+                let expected_ty = if let Some(annot) = ty_opt {
+                    let parsed = self.parse_type_annotation(&annot.node, &std::collections::HashMap::new());
+                    self.unify(&parsed, &val_ty)
+                        .map_err(|e| e.with_expected(parsed.clone()).with_found(val_ty.clone()).with_span(stmt.span.clone()))?;
+                    parsed
+                } else {
+                    val_ty.clone()
+                };
+                
+                if let Some(scheme) = env.get(name) {
+                    let instantiated = self.instantiate(&scheme);
+                    self.unify(&instantiated, &expected_ty)
+                        .map_err(|e| e.with_span(stmt.span.clone()))?;
+                } else {
+                    env.set(
+                        name.clone(),
+                        Scheme {
+                            vars: vec![],
+                            ty: expected_ty.clone(),
+                        },
+                    );
+                }
+                let resolved = self.resolve(&expected_ty);
+                self.recorded_types.insert(name.clone(), resolved);
+            }
+            Statement::Assignment(name, value) => {
                 let val_ty = self.infer_expr(value, env, current_ret_ty)?;
                 if let Some(scheme) = env.get(name) {
                     let instantiated = self.instantiate(&scheme);
@@ -654,66 +756,22 @@ impl TypeChecker {
                 return_type,
                 body,
             } => {
-                let ret_ty = if let Some(ret_str) = return_type {
-                    // Resolve explicit type. For simple parser, parse string type names:
-                    // e.g. "Sayı?", "Sayı", "Metin", etc.
-                    let is_nullable = ret_str.ends_with('?');
-                    let base_name = if is_nullable {
-                        &ret_str[0..ret_str.len() - 1]
-                    } else {
-                        ret_str.as_str()
-                    };
-                    let base_ty = match base_name {
-                        "Sayı" | "sayı" => Type::Number,
-                        "Metin" | "metin" => Type::String,
-                        "Mantıksal" | "mantıksal" => Type::Boolean,
-                        "Boş" | "boş" => Type::Bos,
-                        _ => {
-                            if generics.contains(&base_name.to_string()) {
-                                Type::Generic(base_name.to_string())
-                            } else {
-                                Type::Var(self.new_var())
-                            }
-                        }
-                    };
-                    if is_nullable {
-                        Type::Option(Box::new(base_ty))
-                    } else {
-                        base_ty
-                    }
+                let mut generic_vars = std::collections::HashMap::new();
+                for g in generics {
+                    generic_vars.insert(g.clone(), self.new_var());
+                }
+
+                let ret_ty = if let Some(annot) = return_type {
+                    self.parse_type_annotation(&annot.node, &generic_vars)
                 } else {
-                    let ret_var = self.new_var();
-                    Type::Var(ret_var)
+                    Type::Var(self.new_var())
                 };
 
                 let mut param_tys = Vec::new();
                 let mut body_env = TypeEnv::extend(env);
                 for (p_name, p_type_str_opt) in params {
-                    let p_ty = if let Some(p_type_str) = p_type_str_opt {
-                        let is_nullable = p_type_str.ends_with('?');
-                        let base_name = if is_nullable {
-                            &p_type_str[0..p_type_str.len() - 1]
-                        } else {
-                            p_type_str.as_str()
-                        };
-                        let base_ty = match base_name {
-                            "Sayı" | "sayı" => Type::Number,
-                            "Metin" | "metin" => Type::String,
-                            "Mantıksal" | "mantıksal" => Type::Boolean,
-                            "Boş" | "boş" => Type::Bos,
-                            _ => {
-                                if generics.contains(&base_name.to_string()) {
-                                    Type::Generic(base_name.to_string())
-                                } else {
-                                    Type::Var(self.new_var())
-                                }
-                            }
-                        };
-                        if is_nullable {
-                            Type::Option(Box::new(base_ty))
-                        } else {
-                            base_ty
-                        }
+                    let p_ty = if let Some(annot) = p_type_str_opt {
+                        self.parse_type_annotation(&annot.node, &generic_vars)
                     } else {
                         let p_var = self.new_var();
                         Type::Var(p_var)

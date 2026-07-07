@@ -17,6 +17,7 @@ impl TypeChecker {
             Type::Task(inner) => Type::Task(Box::new(self.resolve(inner))),
             Type::Channel(inner) => Type::Channel(Box::new(self.resolve(inner))),
             Type::Option(inner) => Type::Option(Box::new(self.resolve(inner))),
+            Type::Tuple(types) => Type::Tuple(types.iter().map(|t| self.resolve(t)).collect()),
             Type::Function { params, ret } => Type::Function {
                 params: params.iter().map(|t| self.resolve(t)).collect(),
                 ret: Box::new(self.resolve(ret)),
@@ -34,6 +35,7 @@ impl TypeChecker {
             | Type::Task(inner)
             | Type::Channel(inner)
             | Type::Option(inner) => self.occurs_in(var_id, &inner),
+            Type::Tuple(types) => types.iter().any(|t| self.occurs_in(var_id, t)),
             Type::Function { params, ret } => {
                 params.iter().any(|p| self.occurs_in(var_id, p)) || self.occurs_in(var_id, &ret)
             }
@@ -71,6 +73,17 @@ impl TypeChecker {
             (Type::Task(inner1), Type::Task(inner2)) => self.unify(inner1, inner2),
             (Type::Channel(inner1), Type::Channel(inner2)) => self.unify(inner1, inner2),
             (Type::Option(inner1), Type::Option(inner2)) => self.unify(inner1, inner2),
+            (Type::Tuple(types1), Type::Tuple(types2)) => {
+                if types1.len() != types2.len() {
+                    return Err(super::types::TypeError::new(
+                        "Tip Hatası: Demet uzunlukları uyuşmuyor",
+                    ).with_expected(t1.clone()).with_found(t2.clone()));
+                }
+                for (t1, t2) in types1.iter().zip(types2.iter()) {
+                    self.unify(t1, t2)?;
+                }
+                Ok(())
+            }
             (Type::Option(_), Type::Bos) => Ok(()),
             (Type::Bos, Type::Option(_)) => Ok(()),
             (Type::Option(inner1), other) => self.unify(inner1, other),
@@ -126,6 +139,11 @@ impl TypeChecker {
             | Type::Channel(inner)
             | Type::Option(inner) => {
                 self.collect_free_vars(inner, vars);
+            }
+            Type::Tuple(types) => {
+                for t in types {
+                    self.collect_free_vars(t, vars);
+                }
             }
             Type::Function { params, ret } => {
                 for p in params {

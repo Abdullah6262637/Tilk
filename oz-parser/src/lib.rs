@@ -234,8 +234,43 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
             .repeated()
             .delimited_by(just(Token::LBrace), just(Token::RBrace));
 
+        let type_annot = recursive(|type_annot| {
+            let tuple = type_annot
+                .clone()
+                .separated_by(just(Token::Comma))
+                .delimited_by(just(Token::LParen), just(Token::RParen))
+                .map(TypeAnnotation::Tuple);
+
+            let generic = ident_parser()
+                .then(
+                    type_annot
+                        .clone()
+                        .separated_by(just(Token::Comma))
+                        .delimited_by(just(Token::Lt), just(Token::Gt)),
+                )
+                .map(|(name, args)| TypeAnnotation::Generic(name, args));
+
+            let simple = ident_parser().map(TypeAnnotation::Simple);
+
+            generic
+                .or(simple)
+                .or(tuple)
+                .map_with_span(Spanned::new)
+        });
+
+        let colon_type = just(Token::Colon).ignore_then(type_annot.clone());
+
+        let explicit_var_decl = type_annot
+            .clone()
+            .then(ident_parser())
+            .then_ignore(just(Token::Assign))
+            .then(expr.clone())
+            .then_ignore(just(Token::Semicolon))
+            .map(|((ty, name), rhs)| Statement::VarDecl(name, Some(ty), rhs))
+            .map_with_span(Spanned::new);
+
         // x = 5; or dizi[0] = 5;
-        let assign_stmt = expr
+        let var_decl = explicit_var_decl.or(expr
             .clone()
             .then_ignore(just(Token::Assign))
             .then(expr.clone())
@@ -248,7 +283,7 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
                             "Modül önekli tanımlayıcılara doğrudan atama yapılamaz",
                         ))
                     } else {
-                        Ok(Spanned::new(Statement::VarDecl(name, rhs), span))
+                        Ok(Spanned::new(Statement::VarDecl(name, None, rhs), span))
                     }
                 }
                 Expr::Index(array, index) => Ok(Spanned::new(
@@ -256,7 +291,7 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
                     span,
                 )),
                 _ => Err(Simple::custom(span, "Geçersiz atama hedefi (LHS)")),
-            });
+            }));
 
         // koşul ise { ... } değilse { ... } VEYA değilse koşul2 ise { ... }
         let if_stmt = expr
@@ -337,23 +372,13 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
 
         // işlev topla(a, b) { ... }
         // işlev topla<T>(a: T, b: T): T { ... }
-        let type_annot = just(Token::Colon)
-            .ignore_then(ident_parser().then(just(Token::QuestionMark).or_not()))
-            .map(|(t, opt_q)| {
-                if opt_q.is_some() {
-                    format!("{}?", t)
-                } else {
-                    t
-                }
-            });
-
         let generics_parser = just(Token::Lt)
             .ignore_then(ident_parser().separated_by(just(Token::Comma)))
             .then_ignore(just(Token::Gt))
             .or_not()
             .map(|opt| opt.unwrap_or_default());
 
-        let param_parser = ident_parser().then(type_annot.clone().or_not());
+        let param_parser = ident_parser().then(colon_type.clone().or_not());
 
         let fn_decl = just(Token::Islev)
             .ignore_then(ident_parser())
@@ -363,7 +388,7 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
                     .separated_by(just(Token::Comma))
                     .delimited_by(just(Token::LParen), just(Token::RParen)),
             )
-            .then(type_annot.or_not())
+            .then(colon_type.clone().or_not())
             .then(block.clone())
             .map(
                 |((((name, generics), params), return_type), body)| Statement::FnDecl {
@@ -408,7 +433,7 @@ fn statement_parser() -> impl Parser<Token, Spanned<Statement>, Error = Simple<T
             .map(|_| Statement::Continue)
             .map_with_span(Spanned::new);
 
-        assign_stmt
+        var_decl
             .or(if_stmt)
             .or(while_stmt)
             .or(for_stmt)

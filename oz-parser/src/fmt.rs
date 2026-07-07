@@ -1,4 +1,18 @@
-use crate::ast::{BinaryOp, Expr, InterpolatedPart, Literal, Spanned, Statement, StepDir, UnaryOp};
+use crate::ast::{BinaryOp, Expr, InterpolatedPart, Literal, Spanned, Statement, StepDir, UnaryOp, TypeAnnotation};
+
+fn format_type_annot(ty: &TypeAnnotation) -> String {
+    match ty {
+        TypeAnnotation::Simple(name) => name.clone(),
+        TypeAnnotation::Generic(name, args) => {
+            let arg_strs: Vec<String> = args.iter().map(|a| format_type_annot(&a.node)).collect();
+            format!("{}<{}>", name, arg_strs.join(", "))
+        }
+        TypeAnnotation::Tuple(args) => {
+            let arg_strs: Vec<String> = args.iter().map(|a| format_type_annot(&a.node)).collect();
+            format!("({})", arg_strs.join(", "))
+        }
+    }
+}
 
 pub struct Formatter {
     indent_level: usize,
@@ -37,8 +51,12 @@ impl Formatter {
     fn format_statement(&mut self, stmt: &Spanned<Statement>) -> String {
         let ind = self.indent_str();
         match &stmt.node {
-            Statement::VarDecl(name, expr) => {
-                format!("{}{} = {};\n", ind, name, self.format_expr(expr))
+            Statement::VarDecl(name, ty_opt, expr) => {
+                let ty_str = match ty_opt {
+                    Some(ty) => format!(": {} ", format_type_annot(&ty.node)),
+                    None => " ".to_string(),
+                };
+                format!("{}{}{} = {};\n", ind, name, ty_str, self.format_expr(expr))
             }
             Statement::Assignment(name, expr) => {
                 format!("{}{} = {};\n", ind, name, self.format_expr(expr))
@@ -140,17 +158,29 @@ impl Formatter {
             }
             Statement::FnDecl {
                 name,
-                generics: _, // TODO
+                generics,
                 params,
-                return_type: _, // TODO
+                return_type,
                 body,
             } => {
+                let gen_str = if generics.is_empty() {
+                    "".to_string()
+                } else {
+                    format!("<{}>", generics.join(", "))
+                };
                 let params_str = params
                     .iter()
-                    .map(|(p_name, _)| p_name.clone())
+                    .map(|(p_name, ty_opt)| match ty_opt {
+                        Some(ty) => format!("{}: {}", p_name, format_type_annot(&ty.node)),
+                        None => p_name.clone(),
+                    })
                     .collect::<Vec<_>>()
                     .join(", ");
-                let mut out = format!("{}işlev {}({}) {{\n", ind, name, params_str);
+                let ret_str = match return_type {
+                    Some(ty) => format!(": {}", format_type_annot(&ty.node)),
+                    None => "".to_string(),
+                };
+                let mut out = format!("{}işlev {}{}({}){} {{\n", ind, name, gen_str, params_str, ret_str);
                 self.indent_level += 1;
                 for s in body {
                     out.push_str(&self.format_statement(s));

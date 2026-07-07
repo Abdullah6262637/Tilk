@@ -74,8 +74,15 @@ pub enum StepDir {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum TypeAnnotation {
+    Simple(String),
+    Generic(String, Vec<Spanned<TypeAnnotation>>),
+    Tuple(Vec<Spanned<TypeAnnotation>>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    VarDecl(String, Spanned<Expr>),
+    VarDecl(String, Option<Spanned<TypeAnnotation>>, Spanned<Expr>),
     Assignment(String, Spanned<Expr>),
     IndexAssignment(Spanned<Expr>, Spanned<Expr>, Spanned<Expr>),
     If(
@@ -99,8 +106,8 @@ pub enum Statement {
     FnDecl {
         name: String,
         generics: Vec<String>,
-        params: Vec<(String, Option<String>)>,
-        return_type: Option<String>,
+        params: Vec<(String, Option<Spanned<TypeAnnotation>>)>,
+        return_type: Option<Spanned<TypeAnnotation>>,
         body: Vec<Spanned<Statement>>,
     },
     Return(Option<Spanned<Expr>>),

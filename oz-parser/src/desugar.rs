@@ -10,7 +10,7 @@ pub fn desugar_ast(stmts: &mut Vec<Spanned<Statement>>) -> Result<(), String> {
 
 fn desugar_stmt(stmt: &mut Spanned<Statement>) -> Result<(), String> {
     match &mut stmt.node {
-        Statement::VarDecl(_, expr) => desugar_expr(expr)?,
+        Statement::VarDecl(_, _, expr) => desugar_expr(expr)?,
         Statement::Assignment(_, expr) => desugar_expr(expr)?,
         Statement::IndexAssignment(arr, idx, val) => {
             desugar_expr(arr)?;
